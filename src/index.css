@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark-bg: #0a0a0f;
+  --color-dark-surface: #141420;
+  --color-dark-border: #2a2a3a;
+  --color-dark-text: #e0e0e0;
+  --color-dark-muted: #8888aa;
+
+  --color-skill-core: #4A90D9;
+  --color-skill-specialization: #E67E22;
+  --color-skill-general: #9B59B6;
+
+  --color-status-locked: #555555;
+  --color-status-available: #4A90D9;
+  --color-status-inProgress: #E67E22;
+  --color-status-completed: #2ECC71;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "Consolas", "Monaco", monospace;
+
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+}
+
+body {
+  background-color: #0a0a0f;
+  color: #e0e0e0;
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #141420;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
+}
+
+/* 节点脉冲动画 */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(74, 144, 217, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(74, 144, 217, 0.6); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 面板滑入动画 */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in {
+  animation: slide-in-right 300ms ease-out;
+}
+
