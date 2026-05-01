@@ -3,17 +3,25 @@ import { fileURLToPath } from 'url';
 import { LLMProvider } from '../types/backend';
 import dotenv from 'dotenv';
 
-// 加载 .env 文件
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const config = {
-  port: parseInt(process.env.PORT || '3000'),
+  port: parseInt(process.env.PORT || '3002'),
   nodeEnv: process.env.NODE_ENV || 'development',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   dbPath: process.env.DB_PATH || path.join(process.cwd(), 'data', 'skillmap.db'),
+
+  database: {
+    host: process.env.DB_HOST || '',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    name: process.env.DB_NAME || 'skillmap',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
+  },
 
   llm: {
     provider: (process.env.LLM_PROVIDER || 'dummy') as LLMProvider,
@@ -51,3 +59,7 @@ export const config = {
     },
   },
 };
+
+export function getConfig() {
+  return config;
+}
