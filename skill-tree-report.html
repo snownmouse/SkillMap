@@ -1,0 +1,289 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Skill Tree Report - 自学前端学习者</title>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1, h2, h3, h4 { color: #333; }
+        h1 { border-bottom: 2px solid #4A90D9; padding-bottom: 10px; margin-bottom: 20px; }
+        .meta-info { background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        
+        /* 技能树容器 */
+        .skill-tree-container { display: flex; gap: 20px; margin: 30px 0; }
+        .skill-tree { flex: 3; }
+        .node-details { flex: 1; }
+        
+        /* 技能树样式 */
+        #cy { width: 100%; height: 800px; background: linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px), linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px), linear-gradient(180deg, #faf9f7 0%, #f5f3f0 40%, #ede8e0 100%); background-size: 40px 40px, 40px 40px, 100% 100%; border-radius: 5px; }
+        
+        /* 节点详情样式 */
+        .node-details-panel { background-color: #f9f9f9; padding: 20px; border-radius: 5px; height: 800px; overflow-y: auto; }
+        .node-details h3 { margin-top: 0; }
+        .node-detail-item { margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .completed { background-color: #d4edda; border-left: 5px solid #28a745; }
+        .in-progress { background-color: #fff3cd; border-left: 5px solid #ffc107; }
+        .available { background-color: #cce7ff; border-left: 5px solid #007bff; }
+        .locked { background-color: #f8d7da; border-left: 5px solid #dc3545; }
+        .node-header { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+        .node-description { margin-bottom: 10px; line-height: 1.4; }
+        .node-meta { font-size: 14px; color: #666; }
+        .resources { margin-top: 10px; }
+        .resource-item { margin: 5px 0; padding: 5px; background-color: #f0f0f0; border-radius: 3px; }
+        .steps { margin-top: 10px; }
+        .step-item { margin: 5px 0; padding: 5px; background-color: #f0f0f0; border-radius: 3px; }
+        .tools { margin-top: 10px; }
+        .tool-item { display: inline-block; margin-right: 10px; padding: 3px 8px; background-color: #e9ecef; border-radius: 15px; font-size: 12px; }
+        .no-selection { text-align: center; color: #666; margin-top: 50px; }
+      </style>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    </head>
+    <body>
+      <div class="container">
+        <h1>技能树报告</h1>
+        <div class="meta-info">
+          <h2>自学前端学习者</h2>
+          <p><strong>生成时间:</strong> 2026-04-23T14:15:22.733Z</p>
+          <p><strong>技能树生成时间:</strong> 2026-04-23T12:55:02.461Z</p>
+          <p><strong>技能树摘要:</strong> 零基础自学前端，每周投入15小时，系统掌握前端开发入行核心技能，成功拿到初级前端开发offer</p>
+        </div>
+        
+        <!-- 技能树结构和节点详情 -->
+        <div class="skill-tree-container">
+          <div class="skill-tree">
+            <h3>技能树结构</h3>
+            <div id="cy"></div>
+          </div>
+          <div class="node-details">
+            <h3>节点详情</h3>
+            <div class="node-details-panel">
+              <div class="no-selection">点击技能树中的节点查看详情</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+        // 技能树数据
+        const elements = {"nodes":[{"data":{"id":"meta_growth","label":"🎯 我的成长","progress":0,"status":"available","category":"meta"}},{"data":{"id":"master_html_basics","label":"能用HTML搭建语义化网页结构","progress":0,"status":"available","category":"core"}},{"data":{"id":"master_css_basics","label":"能用CSS实现网页布局与样式美化","progress":0,"status":"locked","category":"core"}},{"data":{"id":"master_javascript_basics","label":"能用JavaScript实现网页基础交互","progress":0,"status":"locked","category":"core"}},{"data":{"id":"master_browser_api","label":"能用浏览器API操作DOM与处理事件","progress":0,"status":"locked","category":"core"}},{"data":{"id":"master_react_basics","label":"能用React开发单页应用基础功能","progress":0,"status":"locked","category":"core"}},{"data":{"id":"master_frontend_build_tools","label":"能用Vite搭建打包前端项目","progress":0,"status":"locked","category":"core"}},{"data":{"id":"master_responsive_design","label":"能开发适配多端的响应式网页","progress":0,"status":"locked","category":"specialization"}},{"data":{"id":"master_frontend_performance","label":"能对前端页面做基础性能优化","progress":0,"status":"locked","category":"specialization"}},{"data":{"id":"master_reusable_components","label":"能开发可复用的前端UI组件","progress":0,"status":"locked","category":"specialization"}},{"data":{"id":"master_git_version_control","label":"能用Git进行代码版本管理","progress":0,"status":"available","category":"general"}},{"data":{"id":"master_chrome_debug","label":"能使用Chrome开发者工具调试前端代码","progress":0,"status":"locked","category":"general"}},{"data":{"id":"build_personal_portfolio","label":"能搭建个人前端作品集用于求职","progress":0,"status":"locked","category":"general"}}],"edges":[{"data":{"id":"master_html_basics-master_css_basics","source":"master_html_basics","target":"master_css_basics","type":"prerequisite"}},{"data":{"id":"master_css_basics-master_javascript_basics","source":"master_css_basics","target":"master_javascript_basics","type":"prerequisite"}},{"data":{"id":"master_css_basics-master_responsive_design","source":"master_css_basics","target":"master_responsive_design","type":"prerequisite"}},{"data":{"id":"master_javascript_basics-master_browser_api","source":"master_javascript_basics","target":"master_browser_api","type":"prerequisite"}},{"data":{"id":"master_browser_api-master_react_basics","source":"master_browser_api","target":"master_react_basics","type":"prerequisite"}},{"data":{"id":"master_browser_api-master_chrome_debug","source":"master_browser_api","target":"master_chrome_debug","type":"prerequisite"}},{"data":{"id":"master_react_basics-master_frontend_build_tools","source":"master_react_basics","target":"master_frontend_build_tools","type":"prerequisite"}},{"data":{"id":"master_react_basics-master_reusable_components","source":"master_react_basics","target":"master_reusable_components","type":"prerequisite"}},{"data":{"id":"master_react_basics-build_personal_portfolio","source":"master_react_basics","target":"build_personal_portfolio","type":"prerequisite"}},{"data":{"id":"master_frontend_build_tools-master_frontend_performance","source":"master_frontend_build_tools","target":"master_frontend_performance","type":"prerequisite"}}]};
+        const nodeDetails = {"meta_growth":{"id":"meta_growth","name":"🎯 我的成长","description":"全局教练，负责你的职业规划、心态建设和整体进度复盘。","category":"meta","difficulty":"create","status":"available","progress":0,"dependencies":[],"resources":[],"subSkills":[],"conversations":[],"aiPendingMessage":"你好！我是你的前端成长教练。我会陪你一起走完这段旅程，准备好开始了吗？","lastActive":null,"milestone":"达成初级前端开发职业目标","estimatedHours":0,"microMilestones":[],"jdFrequency":0},"master_html_basics":{"id":"master_html_basics","name":"能用HTML搭建语义化网页结构","description":"掌握HTML核心语法，写出符合W3C规范的语义化页面结构","category":"core","difficulty":"remember","status":"available","progress":0,"dependencies":[],"resources":[{"name":"MDN HTML入门教程","type":"doc","url":"https://developer.mozilla.org/zh-CN/docs/Learn/HTML"},{"name":"菜鸟HTML实践场","type":"practice","url":"https://www.runoob.com/html/html-tutorial.html"}],"steps":["学习HTML常用标签的作用和用法","理解语义化标签的设计意义","动手搭建常见页面的结构骨架","用验证工具检查代码规范性"],"tools":["VS Code","Chrome浏览器"],"commonProblems":["分不清块级元素和行内元素的区别","全页面使用无语义div代替语义标签"],"pitfalls":["不需要背诵所有HTML标签，掌握常用标签即可","不要过度追求语义化反而增加代码冗余"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"独立搭建出符合规范的各类网页结构","estimatedHours":15,"microMilestones":[{"id":"mm_html_1","name":"列出10个最常用的HTML块级元素","difficulty":"easy","completed":false},{"id":"mm_html_2","name":"写出包含header、main、footer的页面基础骨架","difficulty":"easy","completed":false},{"id":"mm_html_3","name":"完成简单个人信息页的结构编写","difficulty":"easy","completed":false},{"id":"mm_html_4","name":"完成导航栏+商品列表的页面结构","difficulty":"medium","completed":false},{"id":"mm_html_5","name":"用W3C验证工具检查自己编写的页面代码","difficulty":"hard","completed":false}],"jdFrequency":95},"master_css_basics":{"id":"master_css_basics","name":"能用CSS实现网页布局与样式美化","description":"掌握CSS核心语法，实现常见页面布局和视觉效果","category":"core","difficulty":"understand","status":"locked","progress":0,"dependencies":["master_html_basics"],"resources":[{"name":"MDN CSS入门教程","type":"doc","url":"https://developer.mozilla.org/zh-CN/docs/Learn/CSS"},{"name":"Flexbox布局实践","type":"practice","url":"https://flexboxfroggy.com/"}],"steps":["学习CSS选择器和盒模型原理","学习常见布局方式：浮动、Flex、Grid","给已有的HTML结构添加样式","调试解决布局错位问题"],"tools":["VS Code","Chrome DevTools"],"commonProblems":["盒模型尺寸计算错误","浮动清除不彻底导致父元素高度塌陷"],"pitfalls":["不要一开始就学CSS预处理器，先把原生CSS学扎实","不需要背诵所有CSS属性，会查文档就能解决问题"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"独立实现常见网页的布局和样式美化","estimatedHours":25,"microMilestones":[{"id":"mm_css_1","name":"给div设置正确的内边距和外边距","difficulty":"easy","completed":false},{"id":"mm_css_2","name":"给之前写的个人信息页添加文字和颜色样式","difficulty":"easy","completed":false},{"id":"mm_css_3","name":"实现基础的两栏布局效果","difficulty":"easy","completed":false},{"id":"mm_css_4","name":"用Flex实现自适应导航栏布局","difficulty":"medium","completed":false},{"id":"mm_css_5","name":"完成完整登录页面的样式开发","difficulty":"hard","completed":false}],"jdFrequency":95},"master_javascript_basics":{"id":"master_javascript_basics","name":"能用JavaScript实现网页基础交互","description":"掌握JS基础语法，实现常见的网页交互功能","category":"core","difficulty":"apply","status":"locked","progress":0,"dependencies":["master_css_basics"],"resources":[{"name":"现代JavaScript教程","type":"doc","url":"https://zh.javascript.info/"},{"name":"JS基础练习题","type":"practice","url":"https://www.lintcode.com/javascript"}],"steps":["学习JS基础语法、数据类型和运算符","学习函数、作用域和this指向","学习数组和对象的常用操作方法","动手实现简单交互功能"],"tools":["VS Code","Chrome浏览器控制台"],"commonProblems":["搞不清作用域和this指向","异步逻辑理解混乱"],"pitfalls":["不要跳过基础直接学框架，基础不牢会影响后续进阶","不要死背API，多动手写代码比背诵更重要"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"独立实现网页的常见基础交互功能","estimatedHours":40,"microMilestones":[{"id":"mm_js_1","name":"写一个判断输入数字奇偶性的函数","difficulty":"easy","completed":false},{"id":"mm_js_2","name":"实现点击按钮切换页面文字颜色","difficulty":"easy","completed":false},{"id":"mm_js_3","name":"实现一个点击增减的简单计数器","difficulty":"easy","completed":false},{"id":"mm_js_4","name":"实现登录表单的输入内容验证","difficulty":"medium","completed":false},{"id":"mm_js_5","name":"实现Todo列表的新增和删除功能","difficulty":"hard","completed":false}],"jdFrequency":100},"master_browser_api":{"id":"master_browser_api","name":"能用浏览器API操作DOM与处理事件","description":"掌握浏览器提供的DOM操作、事件处理等常用API","category":"core","difficulty":"analyze","status":"locked","progress":0,"dependencies":["master_javascript_basics"],"resources":[{"name":"MDN DOM文档","type":"doc","url":"https://developer.mozilla.org/zh-CN/docs/Web/API/Document_Object_Model"},{"name":"JS事件流讲解","type":"article","url":"https://developer.mozilla.org/zh-CN/docs/Learn/JavaScript/Building_blocks/Events"}],"steps":["学习DOM节点选择和增删改操作","学习事件绑定、事件冒泡和捕获","学习BOM常用API","动手实现基于DOM的交互"],"tools":["VS Code","Chrome DevTools"],"commonProblems":["分不清事件冒泡和捕获的顺序","频繁操作DOM导致页面卡顿"],"pitfalls":["原生DOM操作不熟练就直接用框架，会看不懂框架的底层原理","开发初期不用过度追求性能优化，先实现功能再优化"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"熟练操作DOM实现各类交互，理解浏览器事件机制","estimatedHours":20,"microMilestones":[{"id":"mm_api_1","name":"通过三种不同方式获取页面中的DOM节点","difficulty":"easy","completed":false},{"id":"mm_api_2","name":"给按钮绑定点击事件，点击删除对应DOM节点","difficulty":"easy","completed":false},{"id":"mm_api_3","name":"实现点击页面其他地方关闭弹窗的效果","difficulty":"easy","completed":false},{"id":"mm_api_4","name":"实现下拉菜单的展开收起交互","difficulty":"medium","completed":false},{"id":"mm_api_5","name":"实现基于localStorage的Todo数据持久化","difficulty":"hard","completed":false}],"jdFrequency":90},"master_react_basics":{"id":"master_react_basics","name":"能用React开发单页应用基础功能","description":"掌握React核心概念，开发简单的前端单页应用","category":"core","difficulty":"apply","status":"locked","progress":0,"dependencies":["master_browser_api"],"resources":[{"name":"React官方中文文档","type":"doc","url":"https://react.dev/reference/react"},{"name":"React基础入门教程","type":"course","url":"https://beta.reactjs.org/learn"}],"steps":["学习React核心概念：组件、JSX、props","学习状态管理和Hooks用法","学习路由基础用法","动手开发简单单页应用"],"tools":["VS Code","Node.js"],"commonProblems":["搞不清useState和useEffect的执行时机","错误的直接修改state导致页面不更新"],"pitfalls":["不要上来就学各种状态管理库，先把React基础API用熟练","不用追求所有Hooks都学会，先掌握常用的几个即可"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"独立开发功能完整的React单页应用","estimatedHours":50,"microMilestones":[{"id":"mm_react_1","name":"创建一个简单的React函数组件","difficulty":"easy","completed":false},{"id":"mm_react_2","name":"实现一个基础的计数器组件","difficulty":"easy","completed":false},{"id":"mm_react_3","name":"实现父子组件的props传值","difficulty":"easy","completed":false},{"id":"mm_react_4","name":"实现Todo列表的组件化开发","difficulty":"medium","completed":false},{"id":"mm_react_5","name":"实现简单的多页面路由跳转","difficulty":"hard","completed":false}],"jdFrequency":95},"master_frontend_build_tools":{"id":"master_frontend_build_tools","name":"能用Vite搭建打包前端项目","description":"掌握前端工程化基础工具，搭建项目并打包上线","category":"core","difficulty":"apply","status":"locked","progress":0,"dependencies":["master_react_basics"],"resources":[{"name":"Vite官方文档","type":"doc","url":"https://cn.vitejs.dev/guide/"},{"name":"GitHub Pages部署教程","type":"article","url":"https://docs.github.com/cn/pages/getting-started-with-github-pages/creating-a-github-pages-site"}],"steps":["学习Vite的基础用法，初始化项目","学习项目打包的配置方法","学习项目上线部署的流程","把自己的项目部署到线上"],"tools":["Node.js","Vite","GitHub"],"commonProblems":["依赖安装失败导致项目跑不起来","打包后路径错误导致页面空白"],"pitfalls":["不用深入研究打包工具的底层原理，会用基础功能满足开发需求即可","不要一开始就配置大量无用的插件，保持项目简洁"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"独立搭建前端项目并打包部署上线","estimatedHours":15,"microMilestones":[{"id":"mm_build_1","name":"用Vite初始化一个React项目","difficulty":"easy","completed":false},{"id":"mm_build_2","name":"本地运行项目并访问","difficulty":"easy","completed":false},{"id":"mm_build_3","name":"执行打包命令得到生产版本代码","difficulty":"easy","completed":false},{"id":"mm_build_4","name":"修改基础配置调整打包输出路径","difficulty":"medium","completed":false},{"id":"mm_build_5","name":"把打包好的项目部署到GitHub Pages","difficulty":"hard","completed":false}],"jdFrequency":85},"master_responsive_design":{"id":"master_responsive_design","name":"能开发适配多端的响应式网页","description":"掌握响应式设计方法，适配不同尺寸的移动和桌面屏幕","category":"specialization","difficulty":"apply","status":"locked","progress":0,"dependencies":["master_css_basics"],"resources":[{"name":"MDN响应式设计教程","type":"doc","url":"https://developer.mozilla.org/zh-CN/docs/Learn/CSS/CSS_layout/Responsive_Design"}],"steps":["学习媒体查询的用法","学习弹性布局和流式布局的适配方法","学习rem适配方案","给现有页面添加移动端适配"],"tools":["Chrome DevTools设备模拟器"],"commonProblems":["断点设置不合理导致适配混乱","图片适配不当导致页面溢出"],"pitfalls":["不要为了适配过度写大量媒体查询，优先使用弹性布局自动适配","不用一开始就适配所有尺寸，覆盖主流尺寸即可"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"开发出同时适配桌面和移动端的响应式网页","estimatedHours":20,"microMilestones":[{"id":"mm_resp_1","name":"写出一个基础的媒体查询规则，改变不同屏幕下的背景色","difficulty":"easy","completed":false},{"id":"mm_resp_2","name":"实现移动端导航栏转为汉堡菜单的样式切换","difficulty":"easy","completed":false},{"id":"mm_resp_3","name":"设置图片最大宽度为100%自动适配容器","difficulty":"easy","completed":false},{"id":"mm_resp_4","name":"实现商品网格在不同屏幕下自动调整列数","difficulty":"medium","completed":false},{"id":"mm_resp_5","name":"把之前做的个人页面改为响应式适配","difficulty":"hard","completed":false}],"jdFrequency":80},"master_frontend_performance":{"id":"master_frontend_performance","name":"能对前端页面做基础性能优化","description":"掌握常见前端性能优化方法，提升页面加载和运行速度","category":"specialization","difficulty":"evaluate","status":"locked","progress":0,"dependencies":["master_frontend_build_tools"],"resources":[{"name":"Web性能优化指南","type":"article","url":"https://developer.mozilla.org/zh-CN/docs/Learn/Performance"}],"steps":["学习性能指标的含义和测量方法","学习常见的加载性能优化方法","学习运行时性能优化方法","对自己的项目做性能优化"],"tools":["Chrome Lighthouse"],"commonProblems":["过度优化反而增加代码复杂度","搞不清各个性能指标的优先级"],"pitfalls":["不要为了优化而优化，先满足功能需求再做优化","不用上来就掌握所有优化方法，先掌握常用的基础优化即可"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"能独立分析页面性能问题并做基础优化","estimatedHours":20,"microMilestones":[{"id":"mm_perf_1","name":"用Lighthouse检测自己项目的性能得分","difficulty":"easy","completed":false},{"id":"mm_perf_2","name":"给项目开启Vite的代码压缩","difficulty":"easy","completed":false},{"id":"mm_perf_3","name":"给图片添加width和height属性避免布局偏移","difficulty":"easy","completed":false},{"id":"mm_perf_4","name":"实现大图片的懒加载","difficulty":"medium","completed":false},{"id":"mm_perf_5","name":"把项目性能得分提升到80分以上","difficulty":"hard","completed":false}],"jdFrequency":75},"master_reusable_components":{"id":"master_reusable_components","name":"能开发可复用的前端UI组件","description":"掌握组件化开发思想，开发可复用的通用UI组件","category":"specialization","difficulty":"analyze","status":"locked","progress":0,"dependencies":["master_react_basics"],"resources":[{"name":"React组件设计模式","type":"article","url":"https://react.dev/reference/react/components-and-hooks"}],"steps":["学习组件抽象和props设计方法","学习组件的状态管理逻辑","学习组件的兼容性处理","开发几个通用可复用组件"],"tools":["VS Code","Storybook"],"commonProblems":["组件过度抽象导致难以维护","props设计不合理导致扩展性差"],"pitfalls":["不要一开始就追求完美的通用性，先满足业务需求再抽象","不要为了复用而去复用，平衡复用和开发成本"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"开发出高可用、可复用的通用前端UI组件","estimatedHours":25,"microMilestones":[{"id":"mm_comp_1","name":"抽象出一个通用的按钮组件","difficulty":"easy","completed":false},{"id":"mm_comp_2","name":"给按钮组件添加不同尺寸和类型的props配置","difficulty":"easy","completed":false},{"id":"mm_comp_3","name":"抽象出一个通用的弹窗组件","difficulty":"easy","completed":false},{"id":"mm_comp_4","name":"给弹窗组件添加打开关闭的方法","difficulty":"medium","completed":false},{"id":"mm_comp_5","name":"开发一个可搜索的下拉选择组件","difficulty":"hard","completed":false}],"jdFrequency":80},"master_git_version_control":{"id":"master_git_version_control","name":"能用Git进行代码版本管理","description":"掌握Git基础操作，实现代码版本控制和协作开发","category":"general","difficulty":"remember","status":"available","progress":0,"dependencies":[],"resources":[{"name":"Git入门教程","type":"doc","url":"https://git-scm.com/book/zh/v2"}],"steps":["学习Git基础命令：init、add、commit、push","学习远程仓库的配置和使用","学习分支和合并的基础用法","把自己的代码托管到GitHub"],"tools":["Git","GitHub"],"commonProblems":["提交代码时冲突不知道怎么解决","错误提交后不知道怎么回退"],"pitfalls":["不用掌握所有Git命令，会用基础命令满足日常开发即可","不要直接在main分支开发，养成开分支开发的习惯"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"熟练使用Git管理代码，托管到GitHub远程仓库","estimatedHours":10,"microMilestones":[{"id":"mm_git_1","name":"初始化一个本地Git仓库","difficulty":"easy","completed":false},{"id":"mm_git_2","name":"完成一次代码的add和commit操作","difficulty":"easy","completed":false},{"id":"mm_git_3","name":"在GitHub创建远程仓库并推送代码","difficulty":"easy","completed":false},{"id":"mm_git_4","name":"创建一个新的开发分支并切换","difficulty":"medium","completed":false},{"id":"mm_git_5","name":"解决一次简单的代码合并冲突","difficulty":"hard","completed":false}],"jdFrequency":90},"master_chrome_debug":{"id":"master_chrome_debug","name":"能使用Chrome开发者工具调试前端代码","description":"掌握Chrome DevTools的常用功能，快速调试代码和排查问题","category":"general","difficulty":"apply","status":"locked","progress":0,"dependencies":["master_browser_api"],"resources":[{"name":"Chrome DevTools官方文档","type":"doc","url":"https://developer.chrome.com/docs/devtools/overview/"}],"steps":["学习元素面板调试样式和布局","学习控制台面板打印日志和运行代码","学习源代码面板断点调试JS代码","学习网络面板查看请求和加载资源"],"tools":["Chrome DevTools"],"commonProblems":["不会断点调试只能靠打日志找bug","不知道怎么看网络请求的报错信息"],"pitfalls":["不要只会用console.log调试，学会断点调试能大幅提高效率","不用掌握所有面板的功能，会用常用的几个面板就能解决大部分问题"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"熟练使用Chrome开发者工具快速排查和解决前端问题","estimatedHours":10,"microMilestones":[{"id":"mm_debug_1","name":"用元素面板修改页面元素的样式，查看效果","difficulty":"easy","completed":false},{"id":"mm_debug_2","name":"在控制台打印变量和查看错误信息","difficulty":"easy","completed":false},{"id":"mm_debug_3","name":"给JS代码添加断点，查看变量的变化","difficulty":"easy","completed":false},{"id":"mm_debug_4","name":"用网络面板查看接口请求的响应数据","difficulty":"medium","completed":false},{"id":"mm_debug_5","name":"用性能面板查看页面的函数执行时间","difficulty":"hard","completed":false}],"jdFrequency":85},"build_personal_portfolio":{"id":"build_personal_portfolio","name":"能搭建个人前端作品集用于求职","description":"制作个人项目作品集，展示自己的技术能力用于求职","category":"general","difficulty":"create","status":"locked","progress":0,"dependencies":["master_react_basics"],"resources":[{"name":"作品集模板参考","type":"tool","url":"https://github.com/ubloom/developer-portfolio"}],"steps":["整理自己做过的练习项目","设计作品集页面结构和内容","开发上线作品集网站","更新项目介绍和自己的技术栈"],"tools":["React","Vite","GitHub Pages"],"commonProblems":["过度设计作品集导致加载慢，项目展示不清晰","遗漏关键项目信息和自己的贡献"],"pitfalls":["不用过度追求设计的华丽，清晰展示项目和技术栈才是重点","不要放没有完成的半成品项目，放2-3个完整的项目就足够"],"subSkills":[],"conversations":[],"aiPendingMessage":null,"lastActive":null,"milestone":"完成线上可访问的个人前端作品集，满足求职要求","estimatedHours":15,"microMilestones":[{"id":"mm_port_1","name":"列出要放到作品集里的2-3个项目","difficulty":"easy","completed":false},{"id":"mm_port_2","name":"写出每个项目的介绍和用到的技术栈","difficulty":"easy","completed":false},{"id":"mm_port_3","name":"初始化作品集项目的基础结构","difficulty":"easy","completed":false},{"id":"mm_port_4","name":"完成项目展示页面的开发","difficulty":"medium","completed":false},{"id":"mm_port_5","name":"部署作品集到线上得到可访问链接","difficulty":"hard","completed":false}],"jdFrequency":70}};
+        
+        // 状态颜色
+        const statusColors = {
+          locked: { bg: '#f5f3f0', border: '#d4c8b8', text: '#333333' },
+          available: { bg: '#e8f4e8', border: '#8fbc8f', text: '#1a3d1a' },
+          in_progress: { bg: '#fff8e8', border: '#daa520', text: '#5c3d00' },
+          completed: { bg: '#e0f0e0', border: '#6bbd6b', text: '#0d3d0d' }
+        };
+        
+        // 初始化技能树
+        document.addEventListener('DOMContentLoaded', function() {
+          const cy = cytoscape({
+            container: document.getElementById('cy'),
+            elements: elements,
+            style: [
+              {
+                selector: 'node',
+                style: {
+                  width: 140,
+                  height: 50,
+                  shape: 'round-rectangle',
+                  'background-color': '#ffffff',
+                  'border-width': 2,
+                  'border-color': '#d4c8b8',
+                  'label': 'data(label)',
+                  'color': '#333333',
+                  'text-valign': 'center',
+                  'text-halign': 'center',
+                  'font-size': 12,
+                  'font-weight': 'bold',
+                  'text-wrap': 'ellipsis',
+                  'text-max-width': '120px',
+                  'text-opacity': 0.9,
+                  'transition-property': 'background-color, border-color, width, height',
+                  'transition-duration': 300
+                }
+              },
+              {
+                selector: 'node[status="locked"]',
+                style: {
+                  'background-color': '#f5f3f0',
+                  'border-color': '#d4c8b8',
+                  'color': '#333333',
+                  'opacity': 0.6
+                }
+              },
+              {
+                selector: 'node[status="available"]',
+                style: {
+                  'background-color': '#e8f4e8',
+                  'border-color': '#8fbc8f',
+                  'color': '#1a3d1a'
+                }
+              },
+              {
+                selector: 'node[status="in_progress"]',
+                style: {
+                  'background-color': '#fff8e8',
+                  'border-color': '#daa520',
+                  'color': '#5c3d00'
+                }
+              },
+              {
+                selector: 'node[status="completed"]',
+                style: {
+                  'background-color': '#e0f0e0',
+                  'border-color': '#6bbd6b',
+                  'color': '#0d3d0d'
+                }
+              },
+              {
+                selector: 'edge',
+                style: {
+                  'width': 2,
+                  'line-color': '#c8beb0',
+                  'curve-style': 'bezier',
+                  'target-arrow-shape': 'triangle',
+                  'target-arrow-color': '#c8beb0',
+                  'opacity': 0.6
+                }
+              },
+              {
+                selector: 'edge[type="related"]',
+                style: {
+                  'line-style': 'dashed',
+                  'opacity': 0.4
+                }
+              },
+              {
+                selector: 'edge:selected',
+                style: {
+                  'line-color': '#8fbc8f',
+                  'target-arrow-color': '#8fbc8f',
+                  width: 3
+                }
+              },
+              {
+                selector: 'node:selected',
+                style: {
+                  'border-width': 3,
+                  'border-color': '#6bbd6b'
+                }
+              }
+            ],
+            layout: {
+              name: 'breadthfirst',
+              directed: true,
+              padding: 50,
+              spacingFactor: 1.0,
+              animate: true,
+              animationDuration: 600,
+              animationEasing: 'ease-out-cubic',
+              roots: undefined,
+              circle: false,
+              grid: false,
+              avoidOverlap: true
+            },
+            userZoomingEnabled: true,
+            userPanningEnabled: true,
+            boxSelectionEnabled: false,
+            wheelSensitivity: 0.3,
+            minZoom: 0.3,
+            maxZoom: 2
+          });
+          
+          // 节点点击事件
+          cy.on('tap', 'node', function(evt) {
+            const nodeId = evt.target.id();
+            const nodeData = nodeDetails[nodeId];
+            if (nodeData) {
+              displayNodeDetails(nodeData);
+            }
+          });
+          
+          // 鼠标悬停效果
+          cy.on('mouseover', 'node', function(evt) {
+            const node = evt.target;
+            node.animate({
+              style: {
+                'width': 160,
+                'height': 60,
+                'border-width': 3,
+                'z-index': 999
+              }
+            }, {
+              duration: 250,
+              easing: 'ease-out-cubic'
+            });
+            document.getElementById('cy').style.cursor = 'pointer';
+          });
+          
+          cy.on('mouseout', 'node', function(evt) {
+            const node = evt.target;
+            node.animate({
+              style: {
+                'width': 140,
+                'height': 50,
+                'border-width': 2,
+                'z-index': 1
+              }
+            }, {
+              duration: 250,
+              easing: 'ease-out-cubic'
+            });
+            document.getElementById('cy').style.cursor = 'default';
+          });
+          
+          // 显示节点详情
+          function displayNodeDetails(node) {
+            const detailsPanel = document.querySelector('.node-details-panel');
+            let html = "<div class='node-detail-item " + node.status + "'>" +
+              "<div class='node-header'>" + node.name + "</div>" +
+              "<div class='node-description'>" + node.description + "</div>" +
+              "<div class='node-meta'>" +
+              "<strong>状态:</strong> " + node.status + " | " +
+              "<strong>进度:</strong> " + node.progress + "% | " +
+              "<strong>难度:</strong> " + node.difficulty +
+              "</div>";
+            
+            if (node.resources && node.resources.length > 0) {
+              html += "<div class='resources'>" +
+                "<strong>学习资源:</strong>" +
+                node.resources.map(resource => 
+                  "<div class='resource-item'>" +
+                  "<strong>" + resource.name + "</strong> (" + resource.type + "): <a href='" + resource.url + "' target='_blank'>" + resource.url + "</a>" +
+                  "</div>"
+                ).join('') +
+                "</div>";
+            }
+            
+            if (node.steps && node.steps.length > 0) {
+              html += "<div class='steps'>" +
+                "<strong>学习步骤:</strong>" +
+                node.steps.map((step, index) => 
+                  "<div class='step-item'>" + (index + 1) + ". " + step + "</div>"
+                ).join('') +
+                "</div>";
+            }
+            
+            if (node.tools && node.tools.length > 0) {
+              html += "<div class='tools'>" +
+                "<strong>使用工具:</strong>" +
+                node.tools.map(tool => 
+                  "<span class='tool-item'>" + tool + "</span>"
+                ).join('') +
+                "</div>";
+            }
+            
+            html += "</div>";
+            detailsPanel.innerHTML = html;
+          }
+        });
+      </script>
+    </body>
+    </html>
+  
