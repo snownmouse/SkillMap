@@ -97,10 +97,11 @@ async function upsertTaskRow(pool: any, task: Task) {
   const treeId = task.treeId || null;
   const error = task.error || null;
   const status = mapToDbStatus(task.status);
+  const inputs = task.inputs ? JSON.stringify(task.inputs) : null;
 
   await pool.query(
-    `INSERT INTO tasks (id, user_id, status, progress, stage, message, tree_id, error, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO tasks (id, user_id, status, progress, stage, message, tree_id, error, updated_at, inputs)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (id) DO UPDATE SET
        user_id = EXCLUDED.user_id,
        status = EXCLUDED.status,
@@ -109,8 +110,9 @@ async function upsertTaskRow(pool: any, task: Task) {
        message = EXCLUDED.message,
        tree_id = EXCLUDED.tree_id,
        error = EXCLUDED.error,
-       updated_at = EXCLUDED.updated_at`,
-    [task.id, task.userId, status, progress, stage, message, treeId, error, nowStr]
+       updated_at = EXCLUDED.updated_at,
+       inputs = COALESCE(EXCLUDED.inputs, tasks.inputs)`,
+    [task.id, task.userId, status, progress, stage, message, treeId, error, nowStr, inputs]
   );
 }
 
