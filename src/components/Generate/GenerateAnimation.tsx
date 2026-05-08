@@ -27,12 +27,12 @@ const GenerateAnimation: React.FC<GenerateAnimationProps> = ({ career, onComplet
 
     const statusInterval = setInterval(() => {
       const statuses = [
-        '正在分析职业路径...',
-        '正在构建核心节点...',
-        '正在关联前置技能...',
-        '正在生成学习资源...',
-        '正在优化布局结构...',
-        '即将完成...'
+        '正在为你翻开新的一页...',
+        '正在梳理成长主线...',
+        '正在连接点滴灵感...',
+        '正在记录探索路线...',
+        '整理行囊中...',
+        '即将启程...'
       ];
       setStatus(statuses[Math.floor(Math.random() * statuses.length)]);
     }, 1500);
@@ -55,19 +55,19 @@ const GenerateAnimation: React.FC<GenerateAnimationProps> = ({ career, onComplet
       </div>
 
       <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold text-dark-text">
+        <h2 className="text-2xl font-bold text-app-text">
           正在为你定制 <span className="text-skill-core">{career}</span> 成长之路
         </h2>
-        <p className="text-dark-muted animate-pulse">{status}</p>
+        <p className="text-app-muted animate-pulse">{status}</p>
       </div>
 
       {/* 进度条 */}
       <div className="w-64">
-        <div className="flex justify-between text-xs text-dark-muted mb-2">
+        <div className="flex justify-between text-xs text-app-muted mb-2">
           <span>构建进度</span>
           <span>{Math.round(progress)}%</span>
         </div>
-        <div className="h-1.5 bg-dark-surface rounded-full overflow-hidden">
+        <div className="h-1.5 bg-app-surface rounded-full overflow-hidden">
           <div 
             className="h-full bg-skill-core transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}

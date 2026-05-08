@@ -1,11 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import cytoscape from 'cytoscape';
-import dagre from 'cytoscape-dagre';
-import coseBilkent from 'cytoscape-cose-bilkent';
 import { SkillTreeData } from '../../types/skillTree';
-
-cytoscape.use(dagre);
-cytoscape.use(coseBilkent);
 
 interface SkillTreeCanvasImplProps {
   data: SkillTreeData;

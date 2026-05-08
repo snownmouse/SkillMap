@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const config = {
-  port: parseInt(process.env.PORT || '3002'),
+  port: parseInt(process.env.PORT || '3000'),
   nodeEnv: process.env.NODE_ENV || 'development',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   dbPath: process.env.DB_PATH || path.join(process.cwd(), 'data', 'skillmap.db'),
@@ -23,14 +23,20 @@ export const config = {
     maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
   },
 
+  security: {
+    passwordMinLength: parseInt(process.env.PASSWORD_MIN_LENGTH || '6'),
+    passwordComplexity: process.env.PASSWORD_COMPLEXITY === 'true',
+  },
+
   llm: {
     provider: (process.env.LLM_PROVIDER || 'dummy') as LLMProvider,
     temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.3'),
     maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '4000'),
+    requestTimeoutMs: parseInt(process.env.LLM_REQUEST_TIMEOUT_MS || '90000'),
 
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || '',
-      model: 'gemini-3.1-pro-preview',
+      model: process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview',
     },
     deepseek: {
       apiKey: process.env.DEEPSEEK_API_KEY || '',

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { difyApi } from '../services/difyApi';
 import { ChatMessage } from '../types/chat';
@@ -9,6 +9,58 @@ import { ChatMessage } from '../types/chat';
 export function useChat() {
   const { state, dispatch } = useAppContext();
   const [isSending, setIsSending] = useState(false);
+  const loadedHistoryRef = useRef<Set<string>>(new Set());
+
+  const loadHistory = useCallback(async (nodeId: string) => {
+    if (!state.skillTree?.id || loadedHistoryRef.current.has(nodeId)) return;
+
+    const existingSession = state.chatSessions[nodeId];
+    if (existingSession?.messages?.length) {
+      loadedHistoryRef.current.add(nodeId);
+      return;
+    }
+
+    try {
+      const result = await difyApi.getChatHistory(state.skillTree.id, nodeId);
+      const messages: ChatMessage[] = (result.messages || []).map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp,
+        nodeId,
+        metadata: message.metadata
+          ? {
+              progressUpdate: message.metadata.progress_update || message.metadata.progressUpdate
+                ? {
+                    from: state.skillTree?.nodes[nodeId]?.progress || 0,
+                    to: message.metadata.progress_update?.new_progress ?? message.metadata.progressUpdate?.newProgress ?? state.skillTree?.nodes[nodeId]?.progress ?? 0,
+                  }
+                : undefined,
+              newInsight: message.metadata.newInsight || message.metadata.new_insight,
+              bloomAssessment: message.metadata.bloomAssessment || message.metadata.bloom_assessment,
+              kolbPrompt: message.metadata.kolbPrompt || message.metadata.kolb_prompt,
+              deliberatePracticeTip: message.metadata.deliberatePracticeTip || message.metadata.deliberate_practice_tip,
+              nextChallenge: message.metadata.nextChallenge || message.metadata.next_challenge,
+              growthMindsetPhrase: message.metadata.growthMindsetPhrase || message.metadata.growth_mindset_phrase,
+              nextHook: message.metadata.nextHook || message.metadata.next_hook,
+            }
+          : undefined,
+      }));
+
+      dispatch({
+        type: 'SET_CHAT_HISTORY',
+        payload: {
+          nodeId,
+          nodeName: state.skillTree.nodes[nodeId]?.name,
+          messages,
+        }
+      });
+
+      loadedHistoryRef.current.add(nodeId);
+    } catch (e) {
+      console.error('加载聊天历史失败:', e);
+    }
+  }, [dispatch, state.chatSessions, state.skillTree]);
 
   const sendMessage = async (nodeId: string, content: string) => {
     if (!state.skillTree) return;
@@ -54,6 +106,11 @@ export function useChat() {
         metadata: {
           progressUpdate: result.progressUpdate ? { from: node.progress, to: result.progressUpdate.newProgress } : undefined,
           newInsight: result.newInsight,
+          bloomAssessment: result.bloomAssessment,
+          kolbPrompt: result.kolbPrompt,
+          deliberatePracticeTip: result.deliberatePracticeTip,
+          nextChallenge: result.nextChallenge,
+          growthMindsetPhrase: result.growthMindsetPhrase,
           nextHook: result.nextHook,
         }
       };
@@ -72,6 +129,26 @@ export function useChat() {
         dispatch({
           type: 'UPDATE_NODE_PENDING_MESSAGE',
           payload: { nodeId, message: result.nextHook }
+        });
+      }
+
+      if (result.bloomAssessment || result.kolbPrompt || result.deliberatePracticeTip || result.nextChallenge || result.growthMindsetPhrase || result.nextHook) {
+        dispatch({
+          type: 'UPDATE_NODE_COACHING',
+          payload: {
+            nodeId,
+            pendingMessage: result.nextHook,
+            latestCoaching: {
+              bloomAssessment: result.bloomAssessment,
+              kolbPrompt: result.kolbPrompt,
+              deliberatePracticeTip: result.deliberatePracticeTip,
+              nextChallenge: result.nextChallenge,
+              growthMindsetPhrase: result.growthMindsetPhrase,
+              nextHook: result.nextHook,
+              summary: result.timelineEvent?.summary || result.newInsight,
+              updatedAt: new Date().toISOString(),
+            }
+          }
         });
       }
 
@@ -100,6 +177,7 @@ export function useChat() {
     chatSessions: state.chatSessions,
     isSending,
     isChatLoading: state.isChatLoading,
+    loadHistory,
     sendMessage,
   };
 }

@@ -1,7 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import { MetricsService } from '../services/MetricsService';
 
-export const metricsService = new MetricsService();
+let _metricsService: MetricsService | null = null;
+
+function getMetricsService(): MetricsService {
+  if (!_metricsService) {
+    _metricsService = new MetricsService();
+  }
+  return _metricsService;
+}
+
+export const metricsService = {
+  getSnapshot: (...args: Parameters<MetricsService['getSnapshot']>) => getMetricsService().getSnapshot(...args),
+  getLlmStats: (...args: Parameters<MetricsService['getLlmStats']>) => getMetricsService().getLlmStats(...args),
+  startAutoSnapshot: (...args: Parameters<MetricsService['startAutoSnapshot']>) => getMetricsService().startAutoSnapshot(...args),
+  stopAutoSnapshot: (...args: Parameters<MetricsService['stopAutoSnapshot']>) => getMetricsService().stopAutoSnapshot(...args),
+};
 
 interface MetricEntry {
   timestamp: number;

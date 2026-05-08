@@ -12,7 +12,7 @@ interface ChatPanelProps {
  * 对话面板组件
  */
 const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, onBack }) => {
-  const { chatSessions, isChatLoading, sendMessage } = useChat();
+  const { chatSessions, isChatLoading, loadHistory, sendMessage } = useChat();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const session = chatSessions[nodeId];
@@ -25,18 +25,22 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, onBack }) => {
     }
   }, [messages, isChatLoading]);
 
+  useEffect(() => {
+    loadHistory(nodeId);
+  }, [loadHistory, nodeId]);
+
   return (
-    <div className="flex flex-col h-full bg-dark-bg">
+    <div className="flex flex-col h-full bg-app-bg">
       {/* 内部头部 */}
       {onBack && (
-        <div className="p-3 border-b border-dark-border flex items-center bg-dark-surface">
+        <div className="flex items-center border-b border-app-border bg-app-surface/90 p-3">
           <button 
             onClick={onBack}
-            className="text-dark-muted hover:text-dark-text mr-2"
+            className="mr-2 rounded-lg px-2 py-1 text-app-muted transition-colors hover:bg-app-surface hover:text-app-text"
           >
             ←
           </button>
-          <span className="text-xs font-bold text-dark-text">与 AI 导师对话</span>
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-app-text">Growth Journal</span>
         </div>
       )}
 
@@ -46,9 +50,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, onBack }) => {
         className="flex-1 overflow-y-auto p-4 space-y-4"
       >
         {messages.length === 0 && !isChatLoading && (
-          <div className="text-center py-10">
-            <p className="text-dark-muted text-sm italic">
-              你可以询问关于该技能的学习建议、复盘你的学习进度，或者让 AI 帮你解答疑问。
+          <div className="panel-card-soft rounded-2xl px-4 py-6 text-center">
+            <p className="text-sm italic text-app-muted">
+              🌱 这是你的专属成长日记，你可以问我任何问题...
             </p>
           </div>
         )}
@@ -59,11 +63,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, onBack }) => {
 
         {isChatLoading && (
           <div className="flex justify-start">
-            <div className="bg-dark-surface p-3 rounded-2xl rounded-bl-none">
-              <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 bg-dark-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-1.5 h-1.5 bg-dark-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 bg-dark-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="bg-[rgba(255,250,240,0.6)] border border-[rgba(214,176,165,0.2)] p-3 rounded-[2px] rounded-br-[20px] shadow-sm">
+              <div className="flex flex-col gap-1 items-start">
+                <div className="flex space-x-1.5 items-center h-4">
+                  <div className="w-1.5 h-1.5 bg-skill-core/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 bg-skill-core/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 bg-skill-core/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-[10px] text-app-muted mt-1 italic font-hand">正在为你描绘路径...</span>
               </div>
             </div>
           </div>
@@ -71,7 +78,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, onBack }) => {
       </div>
 
       {/* 输入框 */}
-      <div className="p-4 border-t border-dark-border bg-dark-surface">
+      <div className="border-t border-app-border bg-app-surface/90 p-4">
         <ChatInput 
           onSend={(content) => sendMessage(nodeId, content)} 
           disabled={isChatLoading} 

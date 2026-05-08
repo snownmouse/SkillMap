@@ -1,7 +1,27 @@
 import { UserInput, SkillTreeData } from '../types/skillTree';
-import { CareerPlanResponse, ProfileResponse } from '../types/backend';
 import { handleError, createError } from '../utils/errorHandler';
 import { withCache, cache } from '../utils/cache';
+
+interface CareerPath {
+  id: string;
+  name: string;
+  description: string;
+  steps: { career: string; description: string; duration: string }[];
+  fitScore: number;
+}
+
+interface CareerPlanResponse {
+  targetCareer: string;
+  paths: CareerPath[];
+}
+
+interface ProfileResponse {
+  treeId: string;
+  overallProgress: number;
+  completedNodes: number;
+  totalNodes: number;
+  achievements: number;
+}
 
 function getDeviceId(): string {
   const storageKey = 'skillmap_device_id';
@@ -213,11 +233,16 @@ export const apiClient = {
     );
   },
 
-  async listTrees(): Promise<{ trees: { id: string; career: string; created_at: string }[] }> {
-    // 技能树列表缓存1分钟，减少频繁请求
-    return withCache('trees_list', () => 
-      fetchApi<{ trees: { id: string; career: string; created_at: string }[] }>('/api/trees'),
-      60000 // 1分钟
+  async listTrees(params?: { page?: number; limit?: number; search?: string }): Promise<{ trees: { id: string; career: string; created_at: string }[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const queryParts: string[] = [];
+    if (params?.page) queryParts.push(`page=${params.page}`);
+    if (params?.limit) queryParts.push(`limit=${params.limit}`);
+    if (params?.search) queryParts.push(`search=${encodeURIComponent(params.search)}`);
+    const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+
+    return withCache(`trees_list_${query}`, () =>
+      fetchApi<{ trees: { id: string; career: string; created_at: string }[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(`/api/trees${query}`),
+      60000
     );
   },
 

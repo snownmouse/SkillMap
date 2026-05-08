@@ -10,7 +10,7 @@ interface AppLayoutProps {
  */
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-dark-bg flex flex-col">
+    <div className="app-shell flex flex-col text-app-text">
       <Header />
       <main className="flex-1 relative">
         {children}

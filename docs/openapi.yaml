@@ -1,0 +1,328 @@
+openapi: 3.0.3
+info:
+  title: SkillMap API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /api/auth/login:
+    post:
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+              required: [username, password]
+      responses:
+        "200":
+          description: OK
+  /api/auth/register:
+    post:
+      summary: User register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+                displayName: { type: string }
+              required: [username, password]
+      responses:
+        "201":
+          description: Created
+  /api/auth/refresh:
+    post:
+      summary: Refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+              required: [refreshToken]
+      responses:
+        "200":
+          description: OK
+  /api/trees:
+    get:
+      summary: List trees
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Not used
+      responses:
+        "404":
+          description: Not found
+  /api/trees/generate:
+    post:
+      summary: Generate skill tree (async)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateTreeRequest"
+      responses:
+        "200":
+          description: OK
+  /api/trees/task/{taskId}:
+    get:
+      summary: Get generation task status
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+  /api/careers/plan:
+    post:
+      summary: Generate career plan paths (3-5 options)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateTreeRequest"
+      responses:
+        "200":
+          description: OK
+  /api/planning/paths:
+    post:
+      summary: Split long-term goal into stages and provide path options
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanningPathsRequest"
+      responses:
+        "200":
+          description: OK
+  /api/trees/import:
+    post:
+      summary: Import a skill tree payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillTreeData"
+      responses:
+        "200":
+          description: OK
+  /api/trees/{id}:
+    get:
+      summary: Get tree by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+    put:
+      summary: Update tree by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillTreeData"
+      responses:
+        "200":
+          description: OK
+    delete:
+      summary: Delete tree by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+  /api/trees/{treeId}/chat:
+    post:
+      summary: Send 1:1 coaching message for a node
+      parameters:
+        - in: path
+          name: treeId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nodeId: { type: string }
+                message: { type: string }
+              required: [nodeId, message]
+      responses:
+        "200":
+          description: OK
+  /api/trees/{treeId}/chat/{nodeId}:
+    get:
+      summary: Get node chat history
+      parameters:
+        - in: path
+          name: treeId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: nodeId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+  /api/goals/plan:
+    post:
+      summary: Create growth goal and generate pruned plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                treeId: { type: string }
+                title: { type: string }
+                description: { type: string }
+                targetDate: { type: string }
+                path: { type: string, enum: [tech, management, slash, grassroot, national_strategy, startup, stable] }
+                maxNodes: { type: integer, minimum: 1 }
+                weeklyHours: { type: integer, minimum: 1 }
+                goalNodeId: { type: string }
+                priorityAdjustments:
+                  type: object
+                  additionalProperties:
+                    type: number
+              required: [treeId]
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    GenerateTreeRequest:
+      type: object
+      properties:
+        major: { type: string }
+        career: { type: string }
+        level: { type: string, enum: [zero, basic, intermediate, advanced] }
+        weeklyHours: { type: integer }
+        notes: { type: string }
+        existingSkills:
+          type: array
+          items: { type: string }
+        longTermGoal: { type: string }
+        planMeta:
+          $ref: "#/components/schemas/PlanMeta"
+      required: [major, career, level]
+    PlanningPathsRequest:
+      type: object
+      properties:
+        major: { type: string }
+        career: { type: string }
+        level: { type: string, enum: [zero, basic, intermediate, advanced] }
+        weeklyHours: { type: integer }
+        notes: { type: string }
+        existingSkills:
+          type: array
+          items: { type: string }
+        longTermGoal: { type: string }
+      required: [major, career, level]
+    PlanStage:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        objective: { type: string }
+        keyResults:
+          type: array
+          items: { type: string }
+        suggestedMonths: { type: integer }
+      required: [id, title, objective, keyResults]
+    PlanPathOption:
+      type: object
+      properties:
+        id: { type: string, enum: [tech, management, slash, grassroot, national_strategy, startup, stable] }
+        name: { type: string }
+        description: { type: string }
+        fitScore: { type: number }
+        fitReason: { type: string }
+        stageRoadmap:
+          type: array
+          items:
+            type: object
+            properties:
+              stageId: { type: string }
+              route:
+                type: array
+                items: { type: string }
+              explanation: { type: string }
+            required: [stageId, route]
+      required: [id, name, description]
+    PlanMeta:
+      type: object
+      properties:
+        longTermGoal: { type: string }
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanStage"
+        selectedStageId: { type: string }
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanPathOption"
+        selectedPathId: { type: string, enum: [tech, management, slash, grassroot, national_strategy, startup, stable] }
+    SkillTreeData:
+      type: object
+      properties:
+        id: { type: string }
+        version: { type: string }
+        career: { type: string }
+        summary: { type: string }
+        generatedAt: { type: string }
+        planMeta:
+          $ref: "#/components/schemas/PlanMeta"
+        nodes:
+          type: object
+          additionalProperties: { type: object }
+        edges:
+          type: array
+          items: { type: object }
+        categories:
+          type: array
+          items: { type: object }
+        timeline:
+          type: array
+          items: { type: object }
+      required: [version, career, summary, generatedAt, nodes]

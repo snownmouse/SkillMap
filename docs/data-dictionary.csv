@@ -1,0 +1,40 @@
+table,column,type_sqlite,type_postgres,nullable,default,notes
+users,id,TEXT,TEXT,NO,,primary key
+users,username,TEXT,TEXT,NO,,unique
+users,password_hash,TEXT,TEXT,NO,,
+users,display_name,TEXT,TEXT,YES,,
+users,created_at,TEXT,TIMESTAMPTZ,NO,CURRENT_TIMESTAMP/NOW(),
+sessions,id,TEXT,TEXT,NO,,primary key
+sessions,user_id,TEXT,TEXT,NO,,FK users(id)
+sessions,token,TEXT,TEXT,NO,,unique session token
+sessions,refresh_token,TEXT,TEXT,YES,,
+sessions,expires_at,TEXT,TIMESTAMPTZ,NO,,
+sessions,refresh_expires_at,TEXT,TIMESTAMPTZ,YES,,
+trees,id,TEXT,TEXT,NO,,primary key
+trees,user_id,TEXT,TEXT,NO,default,owner
+trees,career,TEXT,TEXT,NO,,
+trees,tree_data,TEXT,TEXT,NO,,JSON string
+trees,partial,INTEGER,INTEGER,NO,0,
+trees,created_at,TEXT,TIMESTAMPTZ,NO,CURRENT_TIMESTAMP/NOW(),
+trees,updated_at,TEXT,TIMESTAMPTZ,NO,CURRENT_TIMESTAMP/NOW(),
+chat_messages,id,TEXT,TEXT,NO,,primary key
+chat_messages,tree_id,TEXT,TEXT,NO,,FK trees(id)
+chat_messages,node_id,TEXT,TEXT,NO,,
+chat_messages,role,TEXT,TEXT,NO,,user/assistant
+chat_messages,content,TEXT,TEXT,NO,,
+chat_messages,metadata,TEXT,TEXT,YES,,JSON string
+chat_messages,created_at,TEXT,TIMESTAMPTZ,NO,CURRENT_TIMESTAMP/NOW(),
+growth_goals,id,TEXT,TEXT,NO,,primary key
+growth_goals,user_id,TEXT,TEXT,NO,,
+growth_goals,title,TEXT,TEXT,NO,,
+growth_goals,description,TEXT,TEXT,YES,,
+growth_goals,target_date,TEXT,TIMESTAMPTZ,YES,,
+growth_goals,created_at,TEXT,TIMESTAMPTZ,NO,CURRENT_TIMESTAMP/NOW(),
+growth_plans,id,TEXT,TEXT,NO,,primary key
+growth_plans,goal_id,TEXT,TEXT,NO,,FK growth_goals(id)
+growth_plans,user_id,TEXT,TEXT,NO,,
+growth_plans,active_path,TEXT,TEXT,NO,,tech/management/slash
+growth_plans,plan_data,TEXT,TEXT,NO,,JSON string
+growth_plans,created_at,TEXT,TIMESTAMPTZ,NO,CURRENT_TIMESTAMP/NOW(),
+growth_plans,updated_at,TEXT,TIMESTAMPTZ,NO,CURRENT_TIMESTAMP/NOW(),
+

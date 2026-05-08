@@ -33,9 +33,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
+        const storageKey = 'skillmap_device_id';
+        let deviceId = '';
+        try {
+          deviceId = localStorage.getItem(storageKey) || '';
+          if (!deviceId) {
+            deviceId = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+            localStorage.setItem(storageKey, deviceId);
+          }
+        } catch {
+          deviceId = '';
+        }
+
         const response = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(deviceId ? { 'x-device-id': deviceId } : {})
+          },
           body: JSON.stringify(body),
           signal: controller.signal,
         });
@@ -53,6 +68,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         } else {
           const authState = {
             token: data.token,
+            refreshToken: data.refreshToken,
             user: data.user
           };
           dispatch({ type: 'SET_AUTH', payload: authState });
@@ -77,28 +93,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-light-bg flex items-center justify-center p-6">
+    <div className="min-h-screen bg-app-bg flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <div className="inline-block p-3 bg-skill-core/10 rounded-2xl border border-skill-core/20 mb-4 shadow-sm">
-            <span className="text-4xl">🗺️</span>
+          <div className="inline-flex h-14 w-14 items-center justify-center bg-skill-core/10 rounded-2xl border border-skill-core/20 mb-4 shadow-sm">
+            <span className="text-3xl">🗺️</span>
           </div>
-          <h1 className="text-4xl font-black text-light-text tracking-tight">
+          <h1 className="text-4xl font-black text-app-text tracking-tight">
             Skill<span className="text-skill-core">Map</span>
           </h1>
-          <p className="mt-2 text-light-muted">
+          <p className="mt-2 text-app-muted">
             {isRegister ? '创建账号，保存你的成长数据' : '登录账号，继续你的成长之旅'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-bold text-light-text mb-2">用户名</label>
+            <label className="block text-sm font-bold text-app-text mb-2">用户名</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 bg-light-surface border border-light-border rounded-xl text-light-text placeholder-light-muted/50 focus:outline-none focus:border-skill-core/50 focus:ring-1 focus:ring-skill-core/30 transition-all shadow-sm"
+              className="w-full px-4 py-3 bg-app-surface border border-app-border rounded-xl text-app-text placeholder-app-muted/50 focus:outline-none focus:border-skill-core/50 focus:ring-1 focus:ring-skill-core/30 transition-all shadow-sm"
               placeholder="输入用户名"
               required
               minLength={2}
@@ -108,24 +124,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
           {isRegister && (
             <div>
-              <label className="block text-sm font-bold text-light-text mb-2">显示名称</label>
+              <label className="block text-sm font-bold text-app-text mb-2">显示名称</label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-4 py-3 bg-light-surface border border-light-border rounded-xl text-light-text placeholder-light-muted/50 focus:outline-none focus:border-skill-core/50 focus:ring-1 focus:ring-skill-core/30 transition-all shadow-sm"
+                className="w-full px-4 py-3 bg-app-surface border border-app-border rounded-xl text-app-text placeholder-app-muted/50 focus:outline-none focus:border-skill-core/50 focus:ring-1 focus:ring-skill-core/30 transition-all shadow-sm"
                 placeholder="你希望怎么被称呼（可选）"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-bold text-light-text mb-2">密码</label>
+            <label className="block text-sm font-bold text-app-text mb-2">密码</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-light-surface border border-light-border rounded-xl text-light-text placeholder-light-muted/50 focus:outline-none focus:border-skill-core/50 focus:ring-1 focus:ring-skill-core/30 transition-all shadow-sm"
+              className="w-full px-4 py-3 bg-app-surface border border-app-border rounded-xl text-app-text placeholder-app-muted/50 focus:outline-none focus:border-skill-core/50 focus:ring-1 focus:ring-skill-core/30 transition-all shadow-sm"
               placeholder={isRegister ? `至少${CONFIG.SECURITY.PASSWORD_MIN_LENGTH}位密码` : '输入密码'}
               required
               minLength={CONFIG.SECURITY.PASSWORD_MIN_LENGTH}
@@ -154,7 +170,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               setIsRegister(!isRegister);
               setError('');
             }}
-            className="w-full text-light-muted hover:text-skill-core transition-colors text-sm"
+            className="w-full text-app-muted hover:text-skill-core transition-colors text-sm"
           >
             {isRegister ? '已有账号？去登录' : '没有账号？去注册'}
           </button>

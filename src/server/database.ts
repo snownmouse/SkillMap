@@ -1,21 +1,72 @@
 import { config } from './config';
+import { migrateUp } from './migrate';
 
 let db: any = null;
+let initPromise: Promise<any> | null = null;
 
-export async function getPool(): Promise<any> {
+export function getPool(): any {
   if (!db) {
-    const usePostgres = process.env.DB_HOST && process.env.DB_HOST !== 'localhost';
-    
-    if (usePostgres) {
-      db = await initPostgres();
-    } else {
-      db = await initSqlite();
-    }
+    throw new Error('数据库未初始化，请先调用 initDatabase()');
   }
   return db;
 }
 
-export async function getDb(): Promise<any> {
+function createSqlitePoolAdapter(sqliteDb: any) {
+  const normalizeSql = (sql: string) => {
+    let out = sql;
+    out = out.replace(/\$\d+/g, '?');
+    out = out.replace(/\bNOW\(\)\b/g, 'CURRENT_TIMESTAMP');
+    return out;
+  };
+
+  const query = async (text: string, params: any[] = []) => {
+    const sql = normalizeSql(text);
+    const trimmed = sql.trim().toUpperCase();
+    const args = Array.isArray(params) ? params : [];
+    if (trimmed.startsWith('SELECT') || trimmed.startsWith('WITH')) {
+      const rows = sqliteDb.prepare(sql).all(...args);
+      return { rows, rowCount: rows.length };
+    }
+    const result = sqliteDb.prepare(sql).run(...args);
+    return { rows: [], rowCount: result?.changes ?? 0 };
+  };
+
+  return {
+    query,
+    prepare: (...args: any[]) => sqliteDb.prepare(...args),
+    exec: (...args: any[]) => sqliteDb.exec(...args),
+    pragma: (...args: any[]) => sqliteDb.pragma(...args),
+    close: (...args: any[]) => sqliteDb.close(...args),
+  };
+}
+
+export async function initDatabase(): Promise<void> {
+  if (initPromise) return initPromise;
+  
+  initPromise = (async () => {
+    const nodeEnv = process.env.NODE_ENV || 'development';
+    const mustUsePostgres = nodeEnv === 'production' || nodeEnv === 'staging';
+    const hasPostgresConfig = Boolean(process.env.DB_HOST);
+    if (mustUsePostgres && !hasPostgresConfig) {
+      throw new Error('staging/production 环境必须配置 PostgreSQL（DB_HOST/DB_USER/DB_PASSWORD/DB_NAME）');
+    }
+
+    const usePostgres = mustUsePostgres || (process.env.DB_HOST && process.env.DB_HOST !== 'localhost');
+    
+    if (usePostgres) {
+      db = await initPostgres();
+      await migrateUp(db, 'postgres');
+    } else {
+      const sqliteDb = await initSqlite();
+      db = createSqlitePoolAdapter(sqliteDb);
+      await migrateUp(db, 'sqlite');
+    }
+  })();
+  
+  await initPromise;
+}
+
+export function getDb(): any {
   return getPool();
 }
 
@@ -44,8 +95,6 @@ async function initSqlite(): Promise<any> {
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
   
-  initTablesSqlite(db);
-  
   console.log('[DB] SQLite 初始化完成:', dbPath);
   return db;
 }
@@ -67,8 +116,6 @@ async function initPostgres(): Promise<any> {
   pool.on('error', (err: any) => {
     console.error('[DB] PostgreSQL pool error:', err);
   });
-
-  await initTablesPostgres(pool);
   
   console.log('[DB] PostgreSQL 初始化完成:', config.database.host);
   return pool;
@@ -81,10 +128,20 @@ function initTablesSqlite(db: any) {
       user_id TEXT NOT NULL DEFAULT 'default',
       career TEXT NOT NULL,
       tree_data TEXT NOT NULL,
+      partial INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  try {
+    const columns = db.prepare("PRAGMA table_info(trees)").all() as Array<{ name: string }>;
+    const hasPartial = columns.some(col => col.name === 'partial');
+    if (!hasPartial) {
+      db.exec(`ALTER TABLE trees ADD COLUMN partial INTEGER NOT NULL DEFAULT 0`);
+    }
+  } catch {
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS chat_messages (
@@ -182,9 +239,20 @@ function initTablesSqlite(db: any) {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_trees_user ON trees(user_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_trees_career ON trees(career)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_trees_user_career ON trees(user_id, career)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_trees_created ON trees(created_at)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_messages_tree ON chat_messages(tree_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_messages_node ON chat_messages(tree_id, node_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_llm_logs_created ON llm_logs(created_at)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_llm_logs_provider ON llm_logs(provider)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_llm_logs_tree ON llm_logs(tree_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_achievements_tree ON achievements(tree_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_learning_plans_user ON learning_plans(user_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_learning_plans_tree ON learning_plans(tree_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_learning_plans_status ON learning_plans(status)`);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS achievements (
@@ -354,10 +422,21 @@ async function initTablesPostgres(pool: any) {
         user_id TEXT NOT NULL DEFAULT 'default',
         career TEXT NOT NULL,
         tree_data TEXT NOT NULL,
+        partial INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT NOW(),
         updated_at TEXT NOT NULL DEFAULT NOW()
       )
     `);
+
+    try {
+      const result = await client.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'trees' AND column_name = 'partial'`
+      );
+      if ((result?.rowCount || 0) === 0) {
+        await client.query(`ALTER TABLE trees ADD COLUMN partial INTEGER NOT NULL DEFAULT 0`);
+      }
+    } catch {
+    }
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS chat_messages (
@@ -460,6 +539,17 @@ async function initTablesPostgres(pool: any) {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_trees_user ON trees(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_trees_career ON trees(career)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_trees_user_career ON trees(user_id, career)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_trees_created ON trees(created_at)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_llm_logs_provider ON llm_logs(provider)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_llm_logs_tree ON llm_logs(tree_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_achievements_tree ON achievements(tree_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_learning_plans_user ON learning_plans(user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_learning_plans_tree ON learning_plans(tree_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_learning_plans_status ON learning_plans(status)`);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS achievements (

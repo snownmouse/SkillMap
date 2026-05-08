@@ -1,5 +1,5 @@
 import { getPool } from '../database';
-import { logger } from '../utils/Logger';
+import { logger } from '../utils/logger';
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -45,7 +45,7 @@ export async function createBackup(): Promise<string> {
     cleanupOldBackups();
     return backupPath;
   } catch (error) {
-    logger.error('数据库备份失败:', error);
+    logger.error('数据库备份失败', error);
     throw error;
   }
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { SkillTreeData, SkillNode, TimelineEvent } from '../types/skillTree';
+import { CoachSnapshot, SkillTreeData, SkillNode, TimelineEvent } from '../types/skillTree';
 import { ChatSession, ChatMessage } from '../types/chat';
 import { storage } from '../services/storage';
 
@@ -13,19 +13,29 @@ interface AppState {
   isGenerating: boolean;
   isChatLoading: boolean;
   error: string | null;
+  auth?: {
+    token: string | null;
+    refreshToken?: string | null;
+    user?: { id: string; username: string; displayName: string } | null;
+  } | null;
 }
 
 type AppAction =
   | { type: 'SET_SKILL_TREE'; payload: SkillTreeData }
   | { type: 'UPDATE_NODE_PROGRESS'; payload: { nodeId: string; progress: number } }
+  | { type: 'UPDATE_NODE_DATA'; payload: { nodeId: string; nodeData: Partial<SkillNode> } }
+  | { type: 'SET_AUTH'; payload: { token: string | null; refreshToken?: string | null; user?: { id: string; username: string; displayName: string } | null } | null }
+  | { type: 'CLEAR_AUTH' }
   | { type: 'ADD_CONVERSATION'; payload: { nodeId: string; message: ChatMessage } }
+  | { type: 'SET_CHAT_HISTORY'; payload: { nodeId: string; nodeName?: string; messages: ChatMessage[] } }
   | { type: 'SET_ACTIVE_NODE'; payload: string | null }
   | { type: 'SET_GENERATING'; payload: boolean }
   | { type: 'SET_CHAT_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'LOAD_FROM_STORAGE'; payload: AppState }
   | { type: 'ADD_TIMELINE_EVENT'; payload: TimelineEvent }
-  | { type: 'UPDATE_NODE_PENDING_MESSAGE'; payload: { nodeId: string; message: string | null } };
+  | { type: 'UPDATE_NODE_PENDING_MESSAGE'; payload: { nodeId: string; message: string | null } }
+  | { type: 'UPDATE_NODE_COACHING'; payload: { nodeId: string; latestCoaching: CoachSnapshot | null; pendingMessage?: string | null } };
 
 const initialState: AppState = {
   skillTree: null,
@@ -34,6 +44,7 @@ const initialState: AppState = {
   isGenerating: false,
   isChatLoading: false,
   error: null,
+  auth: null,
 };
 
 const AppContext = createContext<{
@@ -49,14 +60,38 @@ function appReducer(state: AppState, action: AppAction): AppState {
       if (!state.skillTree) return state;
       const nodes = { ...state.skillTree.nodes };
       if (nodes[action.payload.nodeId]) {
+        const nextProgress = Math.max(0, Math.min(100, action.payload.progress));
+        const previousStatus = nodes[action.payload.nodeId].status;
         nodes[action.payload.nodeId] = {
           ...nodes[action.payload.nodeId],
-          progress: action.payload.progress,
-          status: action.payload.progress >= 100 ? 'completed' : 
-                  action.payload.progress > 0 ? 'in_progress' : 'available'
+          progress: nextProgress,
+          status: nextProgress >= 100
+            ? 'completed'
+            : nextProgress > 0
+              ? 'in_progress'
+              : previousStatus === 'locked'
+                ? 'locked'
+                : 'available'
         };
       }
       return { ...state, skillTree: { ...state.skillTree, nodes } };
+    case 'UPDATE_NODE_DATA':
+      if (!state.skillTree) return state;
+      if (!state.skillTree.nodes[action.payload.nodeId]) return state;
+      return {
+        ...state,
+        skillTree: {
+          ...state.skillTree,
+          nodes: {
+            ...state.skillTree.nodes,
+            [action.payload.nodeId]: {
+              ...state.skillTree.nodes[action.payload.nodeId],
+              ...action.payload.nodeData,
+              id: action.payload.nodeId,
+            }
+          }
+        }
+      };
     case 'ADD_CONVERSATION':
       const sessions = { ...state.chatSessions };
       const nodeId = action.payload.nodeId;
@@ -72,6 +107,21 @@ function appReducer(state: AppState, action: AppAction): AppState {
       sessions[nodeId].messages.push(action.payload.message);
       sessions[nodeId].lastActiveAt = new Date().toISOString();
       return { ...state, chatSessions: sessions };
+    case 'SET_CHAT_HISTORY':
+      const existingSession = state.chatSessions[action.payload.nodeId];
+      return {
+        ...state,
+        chatSessions: {
+          ...state.chatSessions,
+          [action.payload.nodeId]: {
+            nodeId: action.payload.nodeId,
+            nodeName: action.payload.nodeName || existingSession?.nodeName || state.skillTree?.nodes[action.payload.nodeId]?.name || '未知节点',
+            messages: action.payload.messages,
+            startedAt: action.payload.messages[0]?.timestamp || existingSession?.startedAt || new Date().toISOString(),
+            lastActiveAt: action.payload.messages[action.payload.messages.length - 1]?.timestamp || existingSession?.lastActiveAt || new Date().toISOString(),
+          }
+        }
+      };
     case 'SET_ACTIVE_NODE':
       return { ...state, activeNodeId: action.payload };
     case 'SET_GENERATING':
@@ -80,6 +130,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, isChatLoading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'SET_AUTH':
+      return { ...state, auth: action.payload };
+    case 'CLEAR_AUTH':
+      return { ...state, auth: null };
     case 'LOAD_FROM_STORAGE':
       return { ...state, ...action.payload };
     case 'ADD_TIMELINE_EVENT':
@@ -101,6 +155,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
         };
       }
       return { ...state, skillTree: { ...state.skillTree, nodes: nodesWithPending } };
+    case 'UPDATE_NODE_COACHING':
+      if (!state.skillTree) return state;
+      const nodesWithCoaching = { ...state.skillTree.nodes };
+      if (nodesWithCoaching[action.payload.nodeId]) {
+        nodesWithCoaching[action.payload.nodeId] = {
+          ...nodesWithCoaching[action.payload.nodeId],
+          latestCoaching: action.payload.latestCoaching,
+          aiPendingMessage: action.payload.pendingMessage ?? nodesWithCoaching[action.payload.nodeId].aiPendingMessage,
+        };
+      }
+      return { ...state, skillTree: { ...state.skillTree, nodes: nodesWithCoaching } };
     default:
       return state;
   }
@@ -119,9 +184,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 自动保存
   useEffect(() => {
-    if (state.skillTree) {
-      storage.save(state);
-    }
+    storage.save(state);
   }, [state]);
 
   return (

@@ -3,4 +3,7 @@ export const CONFIG = {
   DIFY_API_KEY: import.meta.env.VITE_DIFY_API_KEY || process.env.VITE_DIFY_API_KEY || '',
   DIFY_GENERATE_WORKFLOW_ID: import.meta.env.VITE_DIFY_GENERATE_WORKFLOW_ID || process.env.VITE_DIFY_GENERATE_WORKFLOW_ID || '',
   DIFY_CHAT_WORKFLOW_ID: import.meta.env.VITE_DIFY_CHAT_WORKFLOW_ID || process.env.VITE_DIFY_CHAT_WORKFLOW_ID || '',
+  SECURITY: {
+    PASSWORD_MIN_LENGTH: 6,
+  },
 };

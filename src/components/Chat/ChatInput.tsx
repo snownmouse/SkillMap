@@ -43,15 +43,15 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         onKeyDown={handleKeyDown}
         placeholder="输入消息..."
         disabled={disabled}
-        className="flex-1 bg-dark-bg text-dark-text text-sm rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-skill-core resize-none min-h-[44px] max-h-[120px] disabled:opacity-50"
+        className="flex-1 bg-app-bg text-app-text text-sm rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-skill-core resize-none min-h-[44px] max-h-[120px] disabled:opacity-50"
         rows={1}
       />
       <button
         onClick={handleSend}
         disabled={!content.trim() || disabled}
-        className="p-3 bg-skill-core text-white rounded-xl hover:bg-skill-core/80 disabled:opacity-50 disabled:bg-dark-muted transition-all"
+        className="p-3 bg-skill-core text-white rounded-xl hover:bg-skill-core/90 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:bg-app-muted transition-all"
       >
-        <span className="transform rotate-90 inline-block">✈️</span>
+        <span className="transform inline-block">✨</span>
       </button>
     </div>
   );

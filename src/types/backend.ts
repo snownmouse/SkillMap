@@ -1,6 +1,4 @@
-export type { SkillTreeData, SkillNode, SkillEdge, Category, TimelineEvent } from './skillTree';
-
-// ============ LLM相关 ============
+export type { SkillTreeData, SkillNode, SkillEdge, Category, TimelineEvent, PlanPath, PlanMeta, PlanStage, PlanPathOption } from './skillTree';
 
 export type LLMProvider = 'gemini' | 'deepseek' | 'siliconflow' | 'qwen' | 'ark' | 'custom' | 'dummy';
 
@@ -28,8 +26,6 @@ export interface LLMResponse {
   model: string;
 }
 
-// ============ API请求/响应 ============
-
 export interface GenerateTreeRequest {
   major: string;
   career: string;
@@ -37,6 +33,8 @@ export interface GenerateTreeRequest {
   weeklyHours: number;
   notes: string;
   existingSkills?: string[];
+  longTermGoal?: string;
+  planMeta?: import('./skillTree').PlanMeta;
 }
 
 export interface ChatRequest {
@@ -47,19 +45,22 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   reply: string;
-  progressUpdate?: { nodeId: string; newProgress: number; reason: string };
+  bloomAssessment?: { currentLevel: string; evidence: string; confidence: 'high' | 'medium' | 'low' };
+  kolbPrompt?: { stage: string; question: string };
+  progressUpdate?: { nodeId: string; newProgress: number; reason: string; isStuck?: boolean };
   newInsight?: string;
+  deliberatePracticeTip?: string;
+  nextChallenge?: string;
+  growthMindsetPhrase?: string;
   nextHook?: string;
   timelineEvent?: { type: string; summary: string };
 }
-
-// ============ 数据库模型 ============
 
 export interface TreeRecord {
   id: string;
   userId: string;
   career: string;
-  treeData: string; // JSON字符串
+  treeData: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,6 +71,14 @@ export interface ChatRecord {
   nodeId: string;
   role: 'user' | 'assistant';
   content: string;
-  metadata: string; // JSON字符串
+  metadata: string;
   createdAt: string;
+}
+
+export interface Dimension {
+  valueAlignment: number;
+  practiceOrientation: number;
+  socialContribution: number;
+  developmentPotential: number;
+  peopleOriented: number;
 }

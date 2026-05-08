@@ -17,6 +17,16 @@ const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({ data, onNodeClick }) 
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const isFilled = (node: any) => {
+      if (!node) return false;
+      if (node.id === 'meta_growth') return true;
+      return Boolean(node.description) && (
+        (Array.isArray(node.microMilestones) && node.microMilestones.length > 0) ||
+        (Array.isArray(node.resources) && node.resources.length > 0) ||
+        (Array.isArray(node.steps) && node.steps.length > 0)
+      );
+    };
+
     // 转换数据为 Cytoscape 格式
     const elements: cytoscape.ElementDefinition[] = [];
     
@@ -28,7 +38,8 @@ const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({ data, onNodeClick }) 
           progress: node.progress,
           status: node.status,
           category: node.category,
-          hasConversations: node.conversations.length > 0
+          hasConversations: node.conversations.length > 0,
+          partial: !isFilled(node)
         }
       });
     });
@@ -55,60 +66,73 @@ const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({ data, onNodeClick }) 
             'width': 180,
             'height': 60,
             'shape': 'round-rectangle',
-            'background-color': '#141420',
+            'background-color': '#FDF8F0',
             'border-width': 2,
-            'border-color': '#2a2a3a',
+            'border-color': '#D6B0A5',
             'label': 'data(label)',
-            'color': '#e0e0e0',
+            'color': '#2E2A28',
             'text-valign': 'center',
             'text-halign': 'center',
             'font-size': '14px',
+            'font-family': 'Inter, sans-serif',
             'font-weight': 'bold',
             'text-wrap': 'wrap',
             'text-max-width': '160px',
+            'shadow-blur': 10,
+            'shadow-color': 'rgba(214, 176, 165, 0.2)',
+            'shadow-opacity': 1,
+            'shadow-offset-y': 4
           } as any
+        },
+        {
+          selector: 'node[partial]',
+          style: {
+            'border-style': 'dashed',
+            'opacity': 0.7,
+          }
         },
         {
           selector: 'node[status="locked"]',
           style: {
-            'background-color': '#333333',
-            'border-color': '#555555',
-            'opacity': 0.6,
-            'color': '#888888'
+            'background-color': '#F4ECE5',
+            'border-color': '#E8E4DF',
+            'opacity': 0.8,
+            'color': '#9CA3AF'
           }
         },
         {
           selector: 'node[status="available"]',
           style: {
-            'background-color': '#1a3a5c',
-            'border-color': '#4A90D9',
-            'color': '#4A90D9'
+            'background-color': '#FDF8F0',
+            'border-color': '#E89F6E',
+            'color': '#E89F6E'
           }
         },
         {
           selector: 'node[status="in_progress"]',
           style: {
-            'background-color': '#3d2b00',
-            'border-color': '#E67E22',
-            'color': '#E67E22'
+            'background-color': '#FFF0E5',
+            'border-color': '#FF8A5C',
+            'color': '#FF8A5C'
           }
         },
         {
           selector: 'node[status="completed"]',
           style: {
-            'background-color': '#0d3320',
-            'border-color': '#2ECC71',
-            'color': '#2ECC71'
+            'background-color': '#F2F6F5',
+            'border-color': '#9CB4B3',
+            'color': '#9CB4B3'
           }
         },
         {
           selector: 'edge',
           style: {
             'width': 2,
-            'line-color': '#555',
+            'line-color': '#D6B0A5',
             'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#555'
+            'target-arrow-color': '#D6B0A5',
+            'arrow-scale': 0.8
           }
         },
         {
@@ -120,7 +144,8 @@ const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({ data, onNodeClick }) 
         {
           selector: 'edge[type="related"]',
           style: {
-            'line-style': 'dashed'
+            'line-style': 'dashed',
+            'line-dash-pattern': [6, 4]
           }
         }
       ],
@@ -163,7 +188,7 @@ const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({ data, onNodeClick }) 
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-full bg-dark-bg"
+      className="w-full h-full bg-app-bg"
       style={{ minHeight: '600px' }}
     />
   );

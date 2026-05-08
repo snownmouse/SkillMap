@@ -1,8 +1,13 @@
 import { LLMMessage, LLMResponse } from '../../types/backend';
 import { OpenAI } from 'openai';
 
+export interface LLMStreamCallbacks {
+  onDelta: (text: string) => void;
+}
+
 export interface ILLMProvider {
   chat(messages: LLMMessage[]): Promise<LLMResponse>;
+  chatStream?(messages: LLMMessage[], callbacks: LLMStreamCallbacks): Promise<LLMResponse>;
   getName(): string;
 }
 
@@ -17,7 +22,8 @@ export abstract class OpenAICompatibleProvider implements ILLMProvider {
     protected baseUrl: string,
     protected model: string,
     protected temperature: number,
-    protected maxTokens: number
+    protected maxTokens: number,
+    protected requestTimeoutMs: number = 90000
   ) {
     // 初始化 OpenAI 客户端
     this.client = new OpenAI({
@@ -36,12 +42,17 @@ export abstract class OpenAICompatibleProvider implements ILLMProvider {
 
     try {
       const startTime = Date.now();
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: messages,
-        temperature: this.temperature,
-        max_tokens: this.maxTokens,
-      });
+      const response = await Promise.race([
+        this.client.chat.completions.create({
+          model: this.model,
+          messages: messages,
+          temperature: this.temperature,
+          max_tokens: this.maxTokens,
+        }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error(`LLM 请求超时，超过 ${this.requestTimeoutMs}ms`)), this.requestTimeoutMs);
+        })
+      ]);
       const endTime = Date.now();
 
       console.log('API 调用耗时:', endTime - startTime, 'ms');
@@ -62,5 +73,45 @@ export abstract class OpenAICompatibleProvider implements ILLMProvider {
     } finally {
       console.log('=== OpenAI 兼容 API 调用结束 ===');
     }
+  }
+
+  async chatStream(messages: LLMMessage[], callbacks: LLMStreamCallbacks): Promise<LLMResponse> {
+    const startTime = Date.now();
+    const stream = await Promise.race([
+      this.client.chat.completions.create({
+        model: this.model,
+        messages: messages,
+        temperature: this.temperature,
+        max_tokens: this.maxTokens,
+        stream: true,
+      }) as any,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`LLM 请求超时，超过 ${this.requestTimeoutMs}ms`)), this.requestTimeoutMs);
+      })
+    ]);
+
+    let content = '';
+    try {
+      for await (const chunk of stream as any) {
+        const delta = chunk?.choices?.[0]?.delta?.content || '';
+        if (delta) {
+          content += delta;
+          callbacks.onDelta(delta);
+        }
+      }
+    } finally {
+      const latency = Date.now() - startTime;
+      console.log('流式调用耗时:', latency, 'ms');
+    }
+
+    return {
+      content,
+      usage: {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      },
+      model: this.model,
+    };
   }
 }

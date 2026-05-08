@@ -4,6 +4,98 @@ import { getDb } from '../database';
 import { llmService } from '../llmService';
 import { getCheckinChatPrompt } from '../prompts/checkinChat';
 import { ChatRequest, ChatResponse } from '../../types/backend';
+import { BloomLevel, CoachSnapshot, KolbStage } from '../../types/skillTree';
+import { getAllowedUserIds } from '../utils/auth';
+
+async function withClient<T>(pool: any, fn: (client: any) => Promise<T>): Promise<T> {
+  if (pool && typeof pool.connect === 'function') {
+    const client = await pool.connect();
+    try {
+      return await fn(client);
+    } finally {
+      client.release();
+    }
+  }
+  return await fn(pool);
+}
+
+function normalizeChatResult(aiResult: any, fallbackNodeId: string, currentProgress: number): ChatResponse & {
+  latestCoaching: CoachSnapshot | null;
+} {
+  const bloomAssessment = aiResult.bloomAssessment || aiResult.bloom_assessment
+    ? {
+        currentLevel: (aiResult.bloomAssessment?.currentLevel || aiResult.bloom_assessment?.current_level || 'understand') as BloomLevel,
+        evidence: aiResult.bloomAssessment?.evidence || aiResult.bloom_assessment?.evidence || '基于最近一次对话进行判断',
+        confidence: aiResult.bloomAssessment?.confidence || aiResult.bloom_assessment?.confidence || 'medium'
+      }
+    : undefined;
+
+  const kolbPrompt = aiResult.kolbPrompt || aiResult.kolb_prompt
+    ? {
+        stage: (aiResult.kolbPrompt?.stage || aiResult.kolb_prompt?.stage || 'reflective') as KolbStage,
+        question: aiResult.kolbPrompt?.question || aiResult.kolb_prompt?.question || '回看这次练习，你最想调整哪里？'
+      }
+    : undefined;
+
+  const rawProgress = aiResult.progressUpdate || aiResult.progress_update;
+  const nextProgress = typeof rawProgress?.newProgress === 'number'
+    ? rawProgress.newProgress
+    : typeof rawProgress?.new_progress === 'number'
+      ? rawProgress.new_progress
+      : undefined;
+
+  const rawIsStuck = rawProgress?.isStuck ?? rawProgress?.is_stuck;
+  const isStuck = typeof rawIsStuck === 'boolean'
+    ? rawIsStuck
+    : typeof rawIsStuck === 'string'
+      ? rawIsStuck.trim().toLowerCase() === 'true'
+      : undefined;
+
+  const progressUpdate = typeof nextProgress === 'number'
+    ? {
+        nodeId: rawProgress?.nodeId || rawProgress?.node_id || fallbackNodeId,
+        newProgress: Math.max(0, Math.min(100, nextProgress)),
+        reason: rawProgress?.reason || '根据本次对话进行了进度调整',
+        ...(typeof isStuck === 'boolean' ? { isStuck } : {})
+      }
+    : undefined;
+
+  const latestCoaching: CoachSnapshot | null = (
+    bloomAssessment ||
+    kolbPrompt ||
+    aiResult.deliberatePracticeTip ||
+    aiResult.deliberate_practice_tip ||
+    aiResult.nextChallenge ||
+    aiResult.next_challenge ||
+    aiResult.growthMindsetPhrase ||
+    aiResult.growth_mindset_phrase ||
+    aiResult.nextHook ||
+    aiResult.next_hook
+  ) ? {
+    bloomAssessment,
+    kolbPrompt,
+    deliberatePracticeTip: aiResult.deliberatePracticeTip || aiResult.deliberate_practice_tip,
+    nextChallenge: aiResult.nextChallenge || aiResult.next_challenge,
+    growthMindsetPhrase: aiResult.growthMindsetPhrase || aiResult.growth_mindset_phrase,
+    nextHook: aiResult.nextHook || aiResult.next_hook,
+    summary: aiResult.timelineEvent?.summary || aiResult.timeline_event?.summary || `当前进度 ${progressUpdate?.newProgress ?? currentProgress}%`,
+    updatedAt: new Date().toISOString()
+  } : null;
+
+  return {
+    reply: aiResult.reply || '我已经收到你的复盘内容，我们继续拆解下一步。',
+    bloomAssessment,
+    kolbPrompt,
+    progressUpdate,
+    newInsight: aiResult.newInsight || aiResult.new_insight,
+    deliberatePracticeTip: aiResult.deliberatePracticeTip || aiResult.deliberate_practice_tip,
+    nextChallenge: aiResult.nextChallenge || aiResult.next_challenge,
+    growthMindsetPhrase: aiResult.growthMindsetPhrase || aiResult.growth_mindset_phrase,
+    nextHook: aiResult.nextHook || aiResult.next_hook,
+    timelineEvent: aiResult.timelineEvent || aiResult.timeline_event,
+    latestCoaching
+  };
+}
 
 export const chatController = {
   /**
@@ -14,8 +106,12 @@ export const chatController = {
       const { treeId } = req.params;
       const { nodeId, message }: ChatRequest = req.body;
 
-      const db = getDb();
-      const treeRow: any = db.prepare('SELECT * FROM trees WHERE id = ?').get(treeId);
+      const pool = getDb();
+      const ids = getAllowedUserIds(req);
+      const treeResult = ids.length === 1
+        ? await pool.query('SELECT * FROM trees WHERE id = $1 AND user_id = $2', [treeId, ids[0]])
+        : await pool.query('SELECT * FROM trees WHERE id = $1 AND (user_id = $2 OR user_id = $3)', [treeId, ids[0], ids[1]]);
+      const treeRow: any = treeResult.rows[0];
       if (!treeRow) return res.status(404).json({ error: '技能树不存在' });
 
       const treeData = JSON.parse(treeRow.tree_data);
@@ -23,16 +119,19 @@ export const chatController = {
       if (!node) return res.status(404).json({ error: '节点不存在' });
 
       // 获取历史记录
-      const historyRows: any[] = db.prepare(`
-        SELECT role, content FROM chat_messages 
-        WHERE tree_id = ? AND node_id = ? 
-        ORDER BY created_at ASC LIMIT 10
-      `).all(treeId, nodeId);
+      const historyResult = await pool.query(
+        `SELECT role, content FROM chat_messages 
+         WHERE tree_id = $1 AND node_id = $2 
+         ORDER BY created_at ASC LIMIT 10`,
+        [treeId, nodeId]
+      );
+      const historyRows: any[] = historyResult.rows;
 
       const historyStr = historyRows.map(h => `${h.role === 'user' ? '用户' : 'AI'}: ${h.content}`).join('\n');
       const treeSummary = `职业: ${treeData.career}, 总结: ${treeData.summary}`;
 
       const { system, user } = getCheckinChatPrompt({
+        nodeId,
         nodeName: node.name,
         nodeHistory: historyStr,
         currentProgress: node.progress,
@@ -40,49 +139,73 @@ export const chatController = {
         treeSummary
       });
 
-      const aiResult = await llmService.chatJSON(system, user);
+      const aiResult = normalizeChatResult(await llmService.chatJSON(system, user), nodeId, node.progress);
+      const progressUpdate = aiResult.progressUpdate;
 
       // 存储消息
       const userMsgId = uuidv4();
       const aiMsgId = uuidv4();
       
-      const insertMsg = db.prepare(`
-        INSERT INTO chat_messages (id, tree_id, node_id, role, content, metadata)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
+      await withClient(pool, async (client) => {
+        await client.query('BEGIN');
+        try {
+          await client.query(
+            `INSERT INTO chat_messages (id, tree_id, node_id, role, content, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [userMsgId, treeId, nodeId, 'user', message, null]
+          );
+          await client.query(
+            `INSERT INTO chat_messages (id, tree_id, node_id, role, content, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [aiMsgId, treeId, nodeId, 'assistant', aiResult.reply, JSON.stringify(aiResult)]
+          );
 
-      db.transaction(() => {
-        insertMsg.run(userMsgId, treeId, nodeId, 'user', message, null);
-        insertMsg.run(aiMsgId, treeId, nodeId, 'assistant', aiResult.reply, JSON.stringify(aiResult));
+          if (progressUpdate) {
+            const newProgress = Math.min(100, Math.max(0, progressUpdate.newProgress));
+            treeData.nodes[nodeId].progress = newProgress;
+            if (newProgress === 100) treeData.nodes[nodeId].status = 'completed';
+            else if (newProgress > 0) treeData.nodes[nodeId].status = 'in_progress';
+          }
 
-        // 更新技能树状态
-        if (aiResult.progress_update) {
-          const newProgress = Math.min(100, Math.max(0, aiResult.progress_update.new_progress));
-          treeData.nodes[nodeId].progress = newProgress;
-          if (newProgress === 100) treeData.nodes[nodeId].status = 'completed';
-          else if (newProgress > 0) treeData.nodes[nodeId].status = 'in_progress';
+          treeData.nodes[nodeId].aiPendingMessage = aiResult.nextHook || treeData.nodes[nodeId].aiPendingMessage;
+          treeData.nodes[nodeId].latestCoaching = aiResult.latestCoaching;
+          treeData.nodes[nodeId].lastActive = new Date().toISOString();
+
+          if (aiResult.timelineEvent) {
+            treeData.timeline = treeData.timeline || [];
+            treeData.timeline.push({
+              date: new Date().toISOString(),
+              ...aiResult.timelineEvent,
+              nodeId
+            });
+          }
+
+          await client.query(
+            `UPDATE trees SET tree_data = $1, updated_at = NOW() WHERE id = $2`,
+            [JSON.stringify(treeData), treeId]
+          );
+
+          await client.query('COMMIT');
+        } catch (e) {
+          try {
+            await client.query('ROLLBACK');
+          } catch {
+          }
+          throw e;
         }
-
-        // 添加时间线事件
-        if (aiResult.timeline_event) {
-          treeData.timeline = treeData.timeline || [];
-          treeData.timeline.push({
-            date: new Date().toISOString(),
-            ...aiResult.timeline_event,
-            nodeId
-          });
-        }
-
-        db.prepare('UPDATE trees SET tree_data = ?, updated_at = datetime("now") WHERE id = ?')
-          .run(JSON.stringify(treeData), treeId);
-      })();
+      });
 
       res.json({
         reply: aiResult.reply,
-        progressUpdate: aiResult.progress_update,
-        newInsight: aiResult.new_insight,
-        nextHook: aiResult.next_hook,
-        timelineEvent: aiResult.timeline_event
+        progressUpdate,
+        bloomAssessment: aiResult.bloomAssessment,
+        kolbPrompt: aiResult.kolbPrompt,
+        newInsight: aiResult.newInsight,
+        deliberatePracticeTip: aiResult.deliberatePracticeTip,
+        nextChallenge: aiResult.nextChallenge,
+        growthMindsetPhrase: aiResult.growthMindsetPhrase,
+        nextHook: aiResult.nextHook,
+        timelineEvent: aiResult.timelineEvent
       });
     } catch (error) {
       console.error('对话失败:', error);
@@ -96,18 +219,35 @@ export const chatController = {
   async getHistory(req: Request, res: Response) {
     try {
       const { treeId, nodeId } = req.params;
-      const db = getDb();
-      const rows = db.prepare(`
-        SELECT id, role, content, created_at as timestamp, metadata
-        FROM chat_messages
-        WHERE tree_id = ? AND node_id = ?
-        ORDER BY created_at ASC
-      `).all(treeId, nodeId);
+      const pool = getDb();
+      const ids = getAllowedUserIds(req);
+      const treeResult = ids.length === 1
+        ? await pool.query('SELECT id FROM trees WHERE id = $1 AND user_id = $2', [treeId, ids[0]])
+        : await pool.query('SELECT id FROM trees WHERE id = $1 AND (user_id = $2 OR user_id = $3)', [treeId, ids[0], ids[1]]);
+      if (treeResult.rows.length === 0) {
+        return res.status(404).json({ error: '技能树不存在' });
+      }
+
+      const result = await pool.query(
+        `SELECT id, role, content, created_at as timestamp, metadata
+         FROM chat_messages
+         WHERE tree_id = $1 AND node_id = $2
+         ORDER BY created_at ASC`,
+        [treeId, nodeId]
+      );
+      const rows = result.rows;
 
       res.json({
         messages: rows.map((r: any) => ({
           ...r,
-          metadata: r.metadata ? JSON.parse(r.metadata) : null
+          metadata: (() => {
+            if (!r.metadata) return null;
+            try {
+              return JSON.parse(r.metadata);
+            } catch {
+              return null;
+            }
+          })()
         }))
       });
     } catch (error) {

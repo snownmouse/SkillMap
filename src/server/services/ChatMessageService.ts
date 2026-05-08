@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessageRepository } from '../repositories';
 import { messageBufferService } from './MessageBufferService';
-import { logger } from '../utils/Logger';
+import { logger } from '../utils/logger';
 
 export class ChatMessageService {
   constructor(private messageRepo: ChatMessageRepository) {}

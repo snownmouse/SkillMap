@@ -7,6 +7,11 @@ export interface ChatMessage {
   metadata?: {
     progressUpdate?: { from: number; to: number };
     newInsight?: string;
+    bloomAssessment?: { currentLevel: string; evidence: string; confidence: 'high' | 'medium' | 'low' };
+    kolbPrompt?: { stage: string; question: string };
+    deliberatePracticeTip?: string;
+    nextChallenge?: string;
+    growthMindsetPhrase?: string;
     nextHook?: string;
   };
 }

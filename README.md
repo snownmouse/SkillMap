@@ -1,31 +1,61 @@
-# SkillMap - 对话驱动的技能探索地图
+# SkillMap
 
-SkillMap 是一个基于 AI 的个性化技能规划与学习助手。它通过深度融合教育学理论（DACUM, Bloom's Taxonomy, ZPD）和心理学动机理论（SDT, Flow），为用户生成动态、可交互的技能树，并提供实时 AI 教练陪练。
+SkillMap 是一个前后端一体化的 AI 学习规划项目，用来生成技能树、围绕节点进行学习复盘，并保存学习过程中的进度与对话记录。
 
-## 🚀 核心特性
+当前仓库已经具备前端、后端、数据库、模型接入和提示词模板五大层，但仍处在持续演进阶段，部分扩展服务和文档尚未完全收敛。本文档只描述当前代码实际存在的结构与可运行方式。
 
-- **AI 驱动的技能树生成**: 输入你的专业、目标职业和当前水平，AI 为你量身定制学习路径
-- **异步生成架构**: 采用任务队列与轮询机制，支持长耗时 LLM 生成，告别请求超时
-- **多供应商 LLM 支持**: 兼容 Gemini, DeepSeek, 硅基流动, 火山引擎 (Ark) 以及任何 OpenAI 兼容的自定义 API
-- **教育学深度集成**: DACUM 任务分析、布鲁姆认知分类、最近发展区 (ZPD)
-- **全局成长教练 (My Growth)**: 专门的元节点，负责职业规划、心态建设和整体进度复盘
-- **实时对话复盘**: 点击任何节点即可与 AI 导师对话，AI 会根据对话内容动态更新你的学习进度
-- **响应式设计**: 适配不同设备尺寸，提供一致的用户体验
-- **双数据库支持**: 内测使用 SQLite（零成本），生产环境可切换到 PostgreSQL
-- **完整监控体系**: 请求追踪、API 指标、LLM 调用统计、自动告警
-- **限流保护**: LLM 调用限流、API 速率限制，防止滥用
+## 当前能力
 
-## 🛠️ 技术栈
+- 技能树生成：根据专业、目标职业、当前水平等输入生成树状学习路径
+- 节点对话：围绕单个技能节点进行多轮复盘，并回写学习进度
+- 职业规划：根据专业与目标职业生成多条成长路径
+- 认证接口：支持注册、登录、刷新令牌、登出、改密
+- 实时通道：提供 WebSocket 连接与任务订阅消息
+- 双数据库模式：默认 SQLite，可切换 PostgreSQL
 
-- **前端**: React 19, TypeScript, Vite, Tailwind CSS v4, Cytoscape.js, Motion, React Router v7
-- **后端**: Node.js, Express, TypeScript, SQLite (better-sqlite3) / PostgreSQL (pg)
-- **AI**: 集成多种主流 LLM SDK 与通用的 OpenAI 兼容协议
-- **监控**: 请求追踪中间件、指标收集服务、自动告警服务
+## 技术栈
 
-## 📦 快速开始
+- 前端：React 19、TypeScript、Vite、Tailwind CSS v4、Cytoscape、Motion
+- 后端：Node.js、Express、TypeScript
+- 数据库：better-sqlite3、PostgreSQL
+- 模型：Gemini、DeepSeek、SiliconFlow、Qwen、Ark、自定义 OpenAI 兼容接口、Dummy Provider
 
-### 1. 环境配置
-复制 `.env.example` 为 `.env` 并填写你的 API Key：
+## 项目结构
+
+```text
+.
+├── server.ts                 # 服务端入口，开发时承载 Vite 中间件
+├── src/
+│   ├── components/           # 前端组件
+│   ├── context/              # 全局状态
+│   ├── hooks/                # 前端 hooks，包括 WebSocket
+│   ├── pages/                # 页面入口
+│   ├── server/               # 后端业务
+│   │   ├── controllers/      # 控制器
+│   │   ├── llmProviders/     # 模型适配层
+│   │   ├── middleware/       # 安全、限流、监控
+│   │   ├── prompts/          # 提示词模板
+│   │   ├── repositories/     # 数据访问层
+│   │   ├── routes/           # API 路由
+│   │   └── services/         # 业务服务
+│   ├── services/             # 前端 API 封装
+│   ├── types/                # 类型定义
+│   └── utils/                # 通用工具
+├── docs/                     # 运维与测试文档
+└── tests/                    # 测试脚本
+```
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+npm install
+```
+
+### 2. 配置环境变量
+
+复制 `.env.example` 为 `.env`，至少配置一个可用的 LLM Provider。
 
 ```bash
 # Windows
@@ -35,50 +65,109 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-### 2. 安装依赖
+推荐的最小配置示例：
+
 ```bash
-npm install
+PORT=3000
+LLM_PROVIDER=ark
+ARK_API_KEY=your-key
 ```
 
-### 3. 启动开发服务器
+如果只是调试前后端链路，不接真实模型，也可以用：
+
+```bash
+LLM_PROVIDER=dummy
+```
+
+### 3. 启动开发环境
+
 ```bash
 npm run dev
 ```
-访问 `http://localhost:3002` 即可开始使用。
 
-### 4. 数据库选择
+启动成功后会看到：
 
-项目支持双数据库模式，通过环境变量自动切换：
+- HTTP 服务：`http://localhost:3000`
+- WebSocket：`ws://localhost:3000/ws`
 
-| 模式 | 配置 | 适用场景 |
-|------|------|---------|
-| **SQLite**（默认） | 不设置 `DB_HOST` | 内测、本地开发 |
-| **PostgreSQL** | 设置 `DB_HOST=xxx` | 生产环境、高并发 |
+开发模式下由 `server.ts` 启动 Express，并在同一进程中挂载 Vite 中间件。
 
-## 📁 目录结构
+### 4. 常用命令
 
-- `src/server/`: 后端逻辑（路由、控制器、服务、数据库）
-- `src/components/`: 前端 React 组件
-- `src/hooks/`: 自定义 React Hooks
-- `src/types/`: 类型定义
-- `data/`: SQLite 数据库文件存储目录
-- `docs/`: 项目文档
-- `tests/`: 测试脚本
+```bash
+npm run dev
+npm run lint
+npm test
+npm run build
+npm run clean
+npm run db:migrate
+npm run db:status
+```
 
-## 📖 文档
+### 5. Docker 一键启动（生产形态）
 
-| 文档 | 说明 |
-|------|------|
-| [docs/BETA_TESTING_GUIDE.md](docs/BETA_TESTING_GUIDE.md) | 内测指南 |
-| [docs/DATABASE_MIGRATION_GUIDE.md](docs/DATABASE_MIGRATION_GUIDE.md) | 数据库迁移指南 |
-| [docs/ROLLBACK_GUIDE.md](docs/ROLLBACK_GUIDE.md) | 回滚预案 |
-| [DESIGN_SPEC.md](DESIGN_SPEC.md) | 设计规范 |
-| [ENVIRONMENT_GUIDE.md](ENVIRONMENT_GUIDE.md) | 环境配置指南 |
+仓库提供 `docker-compose.yml`，会启动 Postgres + Redis + 应用服务：
 
-## 🤝 贡献
+```bash
+docker compose up --build
+```
 
-欢迎提交 Issue 或 Pull Request 来完善 SkillMap！
+## 数据库模式
 
-## 📄 许可证
+### SQLite
 
-MIT License
+- 默认模式
+- 适合本地开发和单机测试
+- 只需要设置 `DB_PATH`，默认值为 `./data/skillmap.db`
+
+### PostgreSQL
+
+- `NODE_ENV=staging|production` 时强制启用（未配置 PostgreSQL 会直接启动失败）
+- 其他环境下：设置 `DB_HOST` 为非空且非 `localhost` 时启用
+- 适合生产环境和高并发写入场景
+- 需要同时配置 `DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`
+
+数据库迁移在启动时自动执行（schema_migrations 版本表），也可以手动运行迁移命令（见上面的 `db:*` scripts）。
+
+## 当前路由概览
+
+后端入口在 `server.ts`，当前挂载的主要路由包括：
+
+- `/api/auth`
+- `/api/careers`
+- `/api/goals`
+- `/api/trees`
+- `/api/trees/:treeId/chat`
+- `/api/tasks/:taskId`
+- `/api/health`
+- `/api/metrics`
+
+说明：
+- `/api/debug` 仅在非 production 环境挂载
+- 任务状态也支持 `GET /api/trees/task/:taskId`（前端轮询使用）
+
+前端当前主路由包括：
+
+- `/`
+- `/generate`
+- `/tree`
+- `/tree/timeline`
+
+## 文档
+
+- `docs/BETA_TESTING_GUIDE.md`：当前版本的测试建议
+- `docs/DATABASE_MIGRATION_GUIDE.md`：数据库切换与风险说明
+- `docs/ROLLBACK_GUIDE.md`：回滚预案与验证步骤
+
+## 已知现状
+
+- 仓库仍保留部分扩展服务与旧接口封装，尚未全部接入主流程
+- 文档已按当前代码结构重整，但高级功能不代表全部已在线上闭环
+- 生产构建在当前 Windows 环境下可能出现收尾阶段异常退出，但 `dist` 产物可生成，建议结合实际部署环境继续验证
+
+## 建议维护方向
+
+- 统一数据库访问抽象，不再混用 `prepare()` 和 `query()`
+- 收敛前端 API 层，统一 `apiClient` 与旧服务封装
+- 将提示词版本管理与实际业务调用打通
+- 为 WebSocket、任务状态和认证流补齐端到端文档

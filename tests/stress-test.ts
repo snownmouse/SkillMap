@@ -1,6 +1,13 @@
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3002';
 
-async function request(url: string, options?: RequestInit) {
+interface RequestResult {
+  status: number;
+  duration: number;
+  ok: boolean;
+  error?: string;
+}
+
+async function request(url: string, options?: RequestInit): Promise<RequestResult> {
   const start = Date.now();
   try {
     const res = await fetch(url, options);
@@ -12,7 +19,7 @@ async function request(url: string, options?: RequestInit) {
   }
 }
 
-async function runScenario(name: string, fn: () => Promise<void>, concurrency: number, durationSec: number) {
+async function runScenario(name: string, fn: () => Promise<RequestResult>, concurrency: number, durationSec: number) {
   console.log(`\n=== ${name} ===`);
   console.log(`并发: ${concurrency}, 持续: ${durationSec}s`);
 
@@ -24,11 +31,9 @@ async function runScenario(name: string, fn: () => Promise<void>, concurrency: n
   const workers = Array(concurrency).fill(null).map(async () => {
     while (Date.now() < endTime) {
       const result = await fn();
-      if (result) {
-        if (result.ok) success++;
-        else fail++;
-        durations.push(result.duration);
-      }
+      if (result.ok) success++;
+      else fail++;
+      durations.push(result.duration);
     }
   });
 
@@ -56,14 +61,14 @@ async function main() {
 
   results.push(await runScenario(
     '场景1: 健康检查',
-    async () => request(`${BASE_URL}/api/health`),
+    () => request(`${BASE_URL}/api/health`),
     50,
     30
   ));
 
   results.push(await runScenario(
     '场景2: 注册',
-    async () => {
+    () => {
       const username = `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       return request(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
@@ -77,7 +82,7 @@ async function main() {
 
   results.push(await runScenario(
     '场景3: 登录',
-    async () => request(`${BASE_URL}/api/auth/login`, {
+    () => request(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'test', password: 'test' }),
@@ -88,14 +93,14 @@ async function main() {
 
   results.push(await runScenario(
     '场景4: 职业列表',
-    async () => request(`${BASE_URL}/api/careers/list`),
+    () => request(`${BASE_URL}/api/careers/list`),
     30,
     30
   ));
 
   results.push(await runScenario(
     '场景5: 技能树生成（无LLM调用）',
-    async () => request(`${BASE_URL}/api/trees/generate`, {
+    () => request(`${BASE_URL}/api/trees/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ major: '计算机科学', targetJob: '前端工程师', level: '初级' }),
@@ -106,7 +111,7 @@ async function main() {
 
   results.push(await runScenario(
     '场景6: 混合场景',
-    async () => {
+    () => {
       const rand = Math.random();
       if (rand < 0.3) return request(`${BASE_URL}/api/health`);
       if (rand < 0.5) return request(`${BASE_URL}/api/careers/list`);

@@ -2,13 +2,22 @@ import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { getPool } from '../database';
-import { logger, errors } from '../utils/Logger';
+import { logger } from '../utils/logger';
+import { errors } from '../middleware/errorHandler';
 import { config } from '../config';
 import { validate } from '../../utils/validation';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 const ATTEMPT_WINDOW_MINUTES = 15;
+
+function isAppError(error: any): error is { statusCode: number; userMessage: string } {
+  return Boolean(
+    error &&
+    typeof error.statusCode === 'number' &&
+    typeof error.userMessage === 'string'
+  );
+}
 
 function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password).digest('hex');
@@ -145,12 +154,12 @@ export const authController = {
         throw errors.validation('用户名和密码不能为空');
       }
       
-      const usernameError = validate.minLength(username, 2, '用户名长度需在2-20之间');
+      const usernameError = validate.minLength(username, 2, '用户名长度需在 2-20 之间');
       if (usernameError) {
         throw errors.validation(usernameError);
       }
       
-      const usernameMaxError = validate.maxLength(username, 20, '用户名长度需在2-20之间');
+      const usernameMaxError = validate.maxLength(username, 20, '用户名长度需在 2-20 之间');
       if (usernameMaxError) {
         throw errors.validation(usernameMaxError);
       }
@@ -203,9 +212,8 @@ export const authController = {
         user: { id: userId, username, displayName: displayName || username }
       });
     } catch (error) {
-      if ((error as any).code) {
-        const appError = error as any;
-        res.status(appError.statusCode).json({ error: appError.userMessage });
+      if (isAppError(error)) {
+        res.status(error.statusCode).json({ error: error.userMessage });
         return;
       }
       logger.error('注册失败', error);
@@ -258,9 +266,8 @@ export const authController = {
         user: { id: user.id, username: user.username, displayName: user.display_name || user.username }
       });
     } catch (error) {
-      if ((error as any).code) {
-        const appError = error as any;
-        res.status(appError.statusCode).json({ error: appError.userMessage });
+      if (isAppError(error)) {
+        res.status(error.statusCode).json({ error: error.userMessage });
         return;
       }
       logger.error('登录失败', error);
@@ -319,9 +326,8 @@ export const authController = {
         }
       });
     } catch (error) {
-      if ((error as any).code) {
-        const appError = error as any;
-        res.status(appError.statusCode).json({ error: appError.userMessage });
+      if (isAppError(error)) {
+        res.status(error.statusCode).json({ error: error.userMessage });
         return;
       }
       logger.error('Token 刷新失败', error);
@@ -351,8 +357,8 @@ export const authController = {
       }
 
       const session = sessionResult.rows[0];
-
       const expiresAt = new Date(session.expires_at);
+
       const now = new Date();
       const timeUntilExpiry = expiresAt.getTime() - now.getTime();
       const shouldAutoRefresh = timeUntilExpiry < 24 * 60 * 60 * 1000;
@@ -387,16 +393,14 @@ export const authController = {
 
       res.json(response);
     } catch (error) {
-      if ((error as any).code) {
-        const appError = error as any;
-        res.status(appError.statusCode).json({ error: appError.userMessage });
+      if (isAppError(error)) {
+        res.status(error.statusCode).json({ error: error.userMessage });
         return;
       }
       logger.error('验证失败', error);
       res.status(500).json({ error: '验证失败，请稍后重试' });
     }
   },
-
   async logout(req: Request, res: Response) {
     try {
       const authHeader = req.headers.authorization;
@@ -422,12 +426,12 @@ export const authController = {
         throw errors.validation('用户名和密码不能为空');
       }
       
-      const usernameError = validate.minLength(username, 2, '用户名长度需在2-20之间');
+      const usernameError = validate.minLength(username, 2, '用户名长度需在 2-20 之间');
       if (usernameError) {
         throw errors.validation(usernameError);
       }
       
-      const usernameMaxError = validate.maxLength(username, 20, '用户名长度需在2-20之间');
+      const usernameMaxError = validate.maxLength(username, 20, '用户名长度需在 2-20 之间');
       if (usernameMaxError) {
         throw errors.validation(usernameMaxError);
       }
@@ -490,9 +494,8 @@ export const authController = {
         message: '账户创建成功'
       });
     } catch (error) {
-      if ((error as any).code) {
-        const appError = error as any;
-        res.status(appError.statusCode).json({ error: appError.userMessage });
+      if (isAppError(error)) {
+        res.status(error.statusCode).json({ error: error.userMessage });
         return;
       }
       logger.error('转换临时用户失败', error);
@@ -540,9 +543,8 @@ export const authController = {
 
       res.json({ success: true, message: '密码修改成功' });
     } catch (error) {
-      if ((error as any).code) {
-        const appError = error as any;
-        res.status(appError.statusCode).json({ error: appError.userMessage });
+      if (isAppError(error)) {
+        res.status(error.statusCode).json({ error: error.userMessage });
         return;
       }
       logger.error('修改密码失败', error);
@@ -552,66 +554,78 @@ export const authController = {
 };
 
 export async function optionalAuth(req: Request, res: Response, next: any) {
-  const authHeader = req.headers.authorization;
-  const pool = getPool();
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  try {
+    const authHeader = req.headers.authorization;
+    const pool = getPool();
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const deviceId = (req.headers['x-device-id'] as string) || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      (req as any).user = { id: `device_${deviceId}`, username: '访客', displayName: '访客', isTempUser: true };
+      return next();
+    }
+
+    const token = authHeader.slice(7);
+    const sessionResult = await pool.query(
+      `SELECT s.*, u.username, u.display_name
+       FROM sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.token = $1 AND s.expires_at > NOW()`,
+      [token]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      res.status(401).json({ error: 'SESSION_EXPIRED', message: '登录已过期，请重新登录' });
+      return;
+    }
+
+    const session = sessionResult.rows[0];
+    (req as any).user = {
+      id: session.user_id,
+      username: session.username,
+      displayName: session.display_name || session.username,
+      isTempUser: false
+    };
+    next();
+  } catch (error) {
+    logger.error('optionalAuth 失败', error);
     const deviceId = (req.headers['x-device-id'] as string) || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     (req as any).user = { id: `device_${deviceId}`, username: '访客', displayName: '访客', isTempUser: true };
-    return next();
+    next();
   }
-
-  const token = authHeader.slice(7);
-  const sessionResult = await pool.query(
-    `SELECT s.*, u.username, u.display_name
-     FROM sessions s
-     JOIN users u ON s.user_id = u.id
-     WHERE s.token = $1 AND s.expires_at > NOW()`,
-    [token]
-  );
-
-  if (sessionResult.rows.length === 0) {
-    res.status(401).json({ error: 'SESSION_EXPIRED', message: '登录已过期，请重新登录' });
-    return;
-  }
-
-  const session = sessionResult.rows[0];
-  (req as any).user = {
-    id: session.user_id,
-    username: session.username,
-    displayName: session.display_name || session.username,
-    isTempUser: false
-  };
-  next();
 }
 
 export async function requireAuth(req: Request, res: Response, next: Function) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: '未登录，请先登录' });
-    return;
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: '未登录，请先登录' });
+      return;
+    }
+
+    const token = authHeader.slice(7);
+    const pool = getPool();
+    const sessionResult = await pool.query(
+      `SELECT s.*, u.username, u.display_name
+       FROM sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.token = $1 AND s.expires_at > NOW()`,
+      [token]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      res.status(401).json({ error: '登录已过期，请重新登录' });
+      return;
+    }
+
+    const session = sessionResult.rows[0];
+    (req as any).user = {
+      id: session.user_id,
+      username: session.username,
+      displayName: session.display_name || session.username
+    };
+    next();
+  } catch (error) {
+    logger.error('requireAuth 失败', error);
+    res.status(500).json({ error: '鉴权失败，请稍后重试' });
   }
-
-  const token = authHeader.slice(7);
-  const pool = getPool();
-  const sessionResult = await pool.query(
-    `SELECT s.*, u.username, u.display_name
-     FROM sessions s
-     JOIN users u ON s.user_id = u.id
-     WHERE s.token = $1 AND s.expires_at > NOW()`,
-    [token]
-  );
-
-  if (sessionResult.rows.length === 0) {
-    res.status(401).json({ error: '登录已过期，请重新登录' });
-    return;
-  }
-
-  const session = sessionResult.rows[0];
-  (req as any).user = {
-    id: session.user_id,
-    username: session.username,
-    displayName: session.display_name || session.username
-  };
-  next();
 }

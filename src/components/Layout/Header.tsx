@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Settings, User } from 'lucide-react';
+import { GitBranch, Radar, Settings, Sparkles, User } from 'lucide-react';
 import SettingsModal from './SettingsModal';
+import { useSkillTree } from '../../hooks/useSkillTree';
+import { useAppContext } from '../../context/AppContext';
 
 /**
  * 顶部导航栏
@@ -9,47 +11,71 @@ import SettingsModal from './SettingsModal';
 const Header: React.FC = () => {
   const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { skillTree } = useSkillTree();
+  const { state } = useAppContext();
+  const currentTreePath = skillTree?.id ? `/tree/${skillTree.id}` : '/tree';
+  const currentTimelinePath = skillTree?.id ? `/tree/${skillTree.id}/timeline` : '/tree/timeline';
 
   const navItems = [
-    { name: '技能树', path: '/tree', icon: '🗺️' },
-    { name: '时间线', path: '/tree/timeline', icon: '📈' },
+    { name: '技能树', path: currentTreePath, isActive: location.pathname === '/tree' || /^\/tree\/[^/]+$/.test(location.pathname), icon: GitBranch },
+    { name: '时间线', path: currentTimelinePath, isActive: location.pathname === '/tree/timeline' || /^\/tree\/[^/]+\/timeline$/.test(location.pathname), icon: Radar },
   ];
 
   return (
-    <header className="h-16 bg-dark-surface border-b border-dark-border px-6 flex items-center justify-between z-40">
-      <div className="flex items-center space-x-8">
-        <Link to="/" className="flex items-center space-x-2">
-          <span className="text-2xl">🗺️</span>
-          <span className="text-xl font-black text-dark-text tracking-tighter">SkillMap</span>
-        </Link>
+    <header className="sticky top-0 z-40 border-b border-app-border bg-app-surface/72 backdrop-blur-xl">
+      <div className="app-container flex min-h-16 items-center justify-between gap-4 py-4">
+        <div className="flex min-w-0 items-center gap-6">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-skill-core/25 bg-skill-core/10 text-skill-core">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <div className="text-lg font-black tracking-tight text-app-text">SkillMap</div>
+              <div className="text-[11px] uppercase tracking-[0.24em] text-app-muted">AI Career Atlas</div>
+            </div>
+          </Link>
 
-        <nav className="flex space-x-1">
-          {navItems.map(item => (
-            <Link 
-              key={item.path}
-              to={item.path}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center space-x-2 ${
-                location.pathname === item.path 
-                  ? 'bg-skill-core/10 text-skill-core' 
-                  : 'text-dark-muted hover:text-dark-text hover:bg-dark-bg'
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span>{item.name}</span>
-            </Link>
-          ))}
-        </nav>
-      </div>
+          <nav className="hidden rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.8)] p-1 sm:flex">
+            {navItems.map((item) => {
+              const Icon = item.icon;
 
-      <div className="flex items-center space-x-4">
-        <button 
-          onClick={() => setIsSettingsOpen(true)}
-          className="p-2 text-dark-muted hover:text-dark-text transition-colors"
-        >
-          <Settings size={20} />
-        </button>
-        <div className="w-8 h-8 rounded-full bg-skill-core/20 border border-skill-core/40 flex items-center justify-center text-xs font-bold text-skill-core cursor-pointer hover:bg-skill-core/30 transition-colors">
-          <User size={16} />
+              return (
+                <Link 
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+                    item.isActive
+                      ? 'bg-skill-core/15 text-skill-core shadow-sm' 
+                      : 'text-app-muted hover:bg-[rgba(232,159,110,0.05)] hover:text-skill-core'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            to="/generate"
+            className="hidden rounded-xl border border-skill-core/20 bg-skill-core/10 px-4 py-2 text-sm font-bold text-skill-core transition-all hover:bg-skill-core/20 hover:scale-105 active:scale-95 md:inline-flex"
+          >
+            继续规划
+          </Link>
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.8)] text-app-muted transition-all hover:text-skill-core hover:bg-[rgba(232,159,110,0.05)] hover:rotate-90"
+          >
+            <Settings size={20} />
+          </button>
+          <Link
+            to={state.auth?.token ? '/tree' : '/login'}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-skill-core/25 bg-skill-core/10 text-skill-core transition-colors hover:bg-skill-core/15"
+          >
+            <User size={16} />
+          </Link>
         </div>
       </div>
 

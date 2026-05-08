@@ -29,6 +29,20 @@ const getSecureToken = (): string | null => {
   }
 };
 
+const getDeviceId = (): string => {
+  const storageKey = 'skillmap_device_id';
+  try {
+    let deviceId = localStorage.getItem(storageKey);
+    if (!deviceId) {
+      deviceId = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem(storageKey, deviceId);
+    }
+    return deviceId;
+  } catch {
+    return 'temp_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+  }
+};
+
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const wsRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -40,7 +54,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const connect = useCallback(() => {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const wsUrl = `${protocol}//${window.location.host}/ws?deviceId=${encodeURIComponent(getDeviceId())}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

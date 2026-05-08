@@ -1,61 +1,9 @@
 import type { SkillTreeData } from '../../types/skillTree';
+import { validateSkillTreeData } from '../../utils/jsonValidator';
 
 export class JsonRepairUtils {
   static validateSkillTreeData(data: any): SkillTreeData {
-    const defaultData: SkillTreeData = {
-      version: '1.0',
-      career: '未知职业',
-      summary: '暂无简介',
-      generatedAt: new Date().toISOString(),
-      nodes: {},
-      edges: [],
-      categories: [],
-      timeline: []
-    };
-
-    if (!data || typeof data !== 'object') return defaultData;
-
-    const validated: SkillTreeData = {
-      version: data.version || defaultData.version,
-      career: data.career || defaultData.career,
-      summary: data.summary || defaultData.summary,
-      generatedAt: data.generatedAt || defaultData.generatedAt,
-      nodes: {},
-      edges: Array.isArray(data.edges) ? data.edges : [],
-      categories: Array.isArray(data.categories) ? data.categories : [],
-      timeline: Array.isArray(data.timeline) ? data.timeline : []
-    };
-
-    if (data.nodes && typeof data.nodes === 'object') {
-      Object.keys(data.nodes).forEach(id => {
-        const node = data.nodes[id];
-        validated.nodes[id] = {
-          id: node.id || id,
-          name: node.name || '未命名技能',
-          description: node.description || '',
-          category: node.category || 'general',
-          difficulty: node.difficulty || 'remember',
-          status: node.status || 'locked',
-          progress: typeof node.progress === 'number' ? node.progress : 0,
-          dependencies: Array.isArray(node.dependencies) ? node.dependencies : [],
-          resources: Array.isArray(node.resources) ? node.resources : [],
-          subSkills: Array.isArray(node.subSkills) ? node.subSkills : [],
-          conversations: Array.isArray(node.conversations) ? node.conversations : [],
-          aiPendingMessage: node.aiPendingMessage || null,
-          lastActive: node.lastActive || null,
-          milestone: node.milestone || '',
-          estimatedHours: typeof node.estimatedHours === 'number' ? node.estimatedHours : 0,
-          steps: Array.isArray(node.steps) ? node.steps : undefined,
-          tools: Array.isArray(node.tools) ? node.tools : undefined,
-          commonProblems: Array.isArray(node.commonProblems) ? node.commonProblems : undefined,
-          pitfalls: Array.isArray(node.pitfalls) ? node.pitfalls : undefined,
-          microMilestones: Array.isArray(node.microMilestones) ? node.microMilestones : undefined,
-          jdFrequency: typeof node.jdFrequency === 'number' ? node.jdFrequency : undefined,
-        };
-      });
-    }
-
-    return validated;
+    return validateSkillTreeData(data);
   }
 
   static tryParse(text: string): any {

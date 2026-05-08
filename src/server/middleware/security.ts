@@ -102,7 +102,60 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
+}
+
+export function bodySizeLimit(maxBytes: number) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    if (contentLength > maxBytes) {
+      res.status(413).json({
+        error: `请求体过大，最大允许 ${Math.round(maxBytes / 1024)}KB`,
+        maxSizeBytes: maxBytes,
+      });
+      return;
+    }
+    next();
+  };
+}
+
+const MAX_TASKS = 1000;
+const TASK_MAX_AGE_MS = 30 * 60 * 1000;
+
+export function cleanupStaleTasks(tasks: Map<string, any>) {
+  const now = Date.now();
+  let cleaned = 0;
+
+  const entries = Array.from(tasks.entries());
+  entries.sort((a, b) => a[1].createdAt.getTime() - b[1].createdAt.getTime());
+
+  for (const [id, task] of entries) {
+    const age = now - task.createdAt.getTime();
+    const isTerminal = task.status === 'completed' || task.status === 'failed';
+
+    if (isTerminal && age > TASK_MAX_AGE_MS) {
+      tasks.delete(id);
+      cleaned++;
+    }
+  }
+
+  if (tasks.size > MAX_TASKS) {
+    const toDelete = Array.from(tasks.entries())
+      .filter(([_, t]) => t.status === 'completed' || t.status === 'failed')
+      .sort((a, b) => a[1].updatedAt.getTime() - b[1].updatedAt.getTime())
+      .slice(0, tasks.size - MAX_TASKS);
+
+    for (const [id] of toDelete) {
+      tasks.delete(id);
+      cleaned++;
+    }
+  }
+
+  if (cleaned > 0) {
+    console.log(`[TaskCleanup] 清理了 ${cleaned} 个过期任务，当前剩余 ${tasks.size} 个`);
+  }
 }
 
 setInterval(() => {

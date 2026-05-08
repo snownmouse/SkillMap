@@ -1,65 +1,96 @@
 import { GenerateTreeRequest } from '../../types/backend';
 
 export function getCareerPlanPrompt(inputs: GenerateTreeRequest) {
-  const system = `你是一个职业规划师。根据用户信息，生成该职业的2-4条不同发展方向供用户选择。
-
-## 重要约束
-1. **信息限制**：只能使用以下提供的用户信息，绝对不能引入任何外部信息或假设。
-2. **真实性**：基于用户实际情况生成职业路径，不做任何无根据的假设。
-3. **准确性**：使用用户提供的专业、职业等信息，不凭空捏造任何内容。
-4. **格式严格**：严格按照指定的JSON格式输出，不添加任何额外内容。
-5. **相关性**：所有职业路径必须与用户的目标职业直接相关。
+  const system = `你是一个专业的职业规划师。根据用户信息，严格按照以下JSON格式生成3-5条职业成长路径规划。只输出JSON，不要输出任何其他文字。
 
 ## 用户信息
-专业：${inputs.major}
-目标职业：${inputs.career}
-当前水平：${inputs.level}
-每周投入：${inputs.weeklyHours}小时
-补充说明：${inputs.notes || '无'}
-已掌握技能：${inputs.existingSkills?.join(', ') || '无'}
+- 专业：${inputs.major}
+- 目标职业：${inputs.career}
+- 当前水平：${inputs.level}
+- 每周投入：${inputs.weeklyHours}小时
+- 补充：${inputs.notes || '无'}
+- 已掌握技能：${inputs.existingSkills?.join(', ') || '无'}
 
-## JSON格式
+## 理论框架
+- Holland职业兴趣理论：R实用型、I研究型、A艺术型、S社会型、E企业型、C常规型
+- 职业锚理论：技术/职能、管理、自主/独立、安全稳定、创业精神、服务/使命、生活平衡、纯粹挑战
+- SMART目标：具体、可测量、可达成、相关、时限
+
+## 生涯教育理念
+- 实践导向：知行合一，在实践中锤炼能力
+- 传统智慧：自强不息、厚德载物、精益求精
+- 社会价值：服务社会发展，实现个人与集体统一
+
+## 路径类型（只使用这些ID）
+- tech: 技术深耕
+- management: 技术管理
+- grassroot: 基层实践
+- national_strategy: 重点领域
+- slash: 复合发展
+- startup: 创新创业
+- stable: 稳定发展
+
+## JSON格式（严格遵循此格式，只输出JSON）
+
 {
-  "targetCareer": "目标职业名称",
+  "targetCareer": "目标职业",
+  "overallFit": {
+    "hollandCode": "三个字母如SEC",
+    "primaryAnchor": "主要职业锚",
+    "secondaryAnchor": "次要职业锚",
+    "dimension": {
+      "valueAlignment": 85,
+      "practiceOrientation": 80,
+      "socialContribution": 75,
+      "developmentPotential": 90,
+      "peopleOriented": 70
+    }
+  },
   "paths": [
     {
-      "id": "path_1",
-      "name": "路径名称（如"从数据分析师起步"）",
-      "description": "一句话描述这条路径适合什么人",
+      "id": "tech",
+      "name": "技术深耕路线",
+      "description": "适合追求专业深度的技术人才",
+      "fitHollandCode": "IAC",
+      "fitCareerAnchor": "技术/职能",
+      "fitReason": "结合用户技能和兴趣分析",
+      "transferableSkills": ["问题分析", "代码实现", "技术沟通"],
+      "characteristics": {
+        "valueFit": "追求技术卓越",
+        "practiceOpportunities": "参与开源项目",
+        "socialImpact": "推动技术进步",
+        "longTermPotential": "技术专家或架构师"
+      },
+      "strategyAlignment": "符合技术发展趋势",
+      "practiceOpportunity": "企业实习、项目实践",
       "steps": [
         {
-          "career": "该阶段的职业名称",
-          "description": "该阶段的核心目标",
-          "duration": "预估时长（如6个月）"
+          "career": "初级工程师",
+          "description": "夯实基础",
+          "duration": "6个月",
+          "keySkills": ["编程基础", "工具使用"],
+          "successMetrics": "独立完成模块开发",
+          "smartsGoal": "6个月内掌握核心技能",
+          "wisdomQuote": "千里之行，始于足下"
         }
       ],
-      "fitScore": 85
+      "fitScore": 85,
+      "dimensionScore": {
+        "valueAlignment": 80,
+        "practiceOrientation": 75,
+        "socialContribution": 70,
+        "developmentPotential": 90,
+        "peopleOriented": 65
+      }
     }
-  ]
-}
+  ],
+  "recommendedPath": "tech",
+  "recommendedReason": "推荐理由",
+  "alternativePaths": ["其他路径简要对比"],
+  "wisdomQuote": "与推荐路径相关的励志名言"
+}`;
 
-## 设计规则
-1. 生成2-4条路径，每条路径代表一种不同的职业成长路线，而不是简单的初级到高级的线性递进。
-2. 每条路径的起点应该匹配用户当前的水平。
-3. 每条路径包含2-4个职业阶段。
-4. fitScore（0-100）表示该路径与用户当前水平的匹配度，供前端排序展示。匹配度最高的路径fitScore最高。
-5. 路径名称要具体，如"从运营转产品"、"从开发转产品"、"直接做产品助理"。
-6. 如果用户已有相关技能，在匹配度中体现。
-7. 路径之间要有明显差异，不要只是换了个名字的相同路线。
-
-## 举例
-如果用户目标是"产品经理"，可能的路径包括：
-- 从运营转产品：适合有用户思维的人
-- 从开发转产品：适合懂技术的人
-- 从设计转产品：适合有同理心的人
-- 直接做产品助理：适合零基础但学习能力强的人
-
-如果用户目标是"数据科学家"，可能的路径包括：
-- 数据分析师路线：从SQL和报表开始
-- 统计学家路线：从数学建模开始
-- 机器学习工程师路线：从编程和算法开始`;
-
-  const user = `请为我生成职业路径规划。`;
+  const user = `请为我生成职业路径规划，请同时考虑我的个人发展和对社会的贡献。`;
 
   return { system, user };
 }

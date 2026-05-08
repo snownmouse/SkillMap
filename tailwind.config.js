@@ -6,19 +6,24 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'Plus Jakarta Sans', 'sans-serif'],
+        serif: ['Instrument Serif', 'Georgia', 'serif'],
+        hand: ['Caveat', 'cursive'],
+      },
       colors: {
-        bg: '#faf8f5',
-        surface: '#ffffff',
-        border: '#e8e4df',
-        text: '#3d3d3d',
-        muted: '#7a7a7a',
-        core: '#7bb38a',
-        specialization: '#f3a683',
-        general: '#a8c8e0',
-        locked: '#d1d1d1',
-        available: '#7bb38a',
-        inProgress: '#f3a683',
-        completed: '#5cb85c',
+        bg: '#FDF8F0',
+        surface: 'rgba(255, 250, 240, 0.7)',
+        border: '#D6B0A5',
+        text: '#2E2A28',
+        muted: '#6B5E55',
+        core: '#E89F6E',
+        specialization: '#F3C26B',
+        general: '#9CB4B3',
+        locked: '#D6B0A5',
+        available: '#E89F6E',
+        inProgress: '#FF8A5C',
+        completed: '#E89F6E',
         light: {
           bg: '#faf8f5',
           surface: '#ffffff',
@@ -27,20 +32,21 @@ export default {
           muted: '#7a7a7a',
         },
         skill: {
-          core: '#7bb38a',
-          specialization: '#f3a683',
-          general: '#a8c8e0',
+          core: '#E89F6E',
+          specialization: '#F3C26B',
+          general: '#9CB4B3',
         },
         status: {
-          inProgress: '#f3a683',
-          completed: '#5cb85c',
+          locked: '#D6B0A5',
+          inProgress: '#FF8A5C',
+          completed: '#E89F6E',
         },
-        dark: {
-          bg: '#1a1a2e',
-          surface: '#16213e',
-          border: '#2a2a4a',
-          text: '#e0e0e0',
-          muted: '#8888aa',
+        app: {
+          bg: '#FDF8F0',
+          surface: 'rgba(255, 250, 240, 0.7)',
+          border: '#D6B0A5',
+          text: '#2E2A28',
+          muted: '#6B5E55',
         },
       },
       animation: {
@@ -57,8 +63,8 @@ export default {
       },
       keyframes: {
         'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 8px rgba(123, 179, 138, 0.3)' },
-          '50%': { boxShadow: '0 0 24px rgba(123, 179, 138, 0.6)' },
+          '0%, 100%': { boxShadow: '0 0 8px rgba(232, 159, 110, 0.3)' },
+          '50%': { boxShadow: '0 0 24px rgba(232, 159, 110, 0.6)' },
         },
         'slide-in-right': {
           'from': { transform: 'translateX(100%)', opacity: '0' },
@@ -77,8 +83,8 @@ export default {
           'to': { transform: 'scale(1)', opacity: '1' },
         },
         'voice-pulse': {
-          '0%, 100%': { boxShadow: '0 0 4px rgba(239, 68, 68, 0.4)', transform: 'scale(1)' },
-          '50%': { boxShadow: '0 0 16px rgba(239, 68, 68, 0.7)', transform: 'scale(1.05)' },
+          '0%, 100%': { boxShadow: '0 0 4px rgba(232, 159, 110, 0.4)', transform: 'scale(1)' },
+          '50%': { boxShadow: '0 0 16px rgba(232, 159, 110, 0.7)', transform: 'scale(1.05)' },
         },
         'voice-bar-1': {
           '0%, 100%': { height: '8px' },
