@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { rateLimitIncr } from '../services/RedisService';
+import { logger } from '../utils/logger';
 
 interface RateLimitEntry {
   count: number;
@@ -180,7 +181,7 @@ export function cleanupStaleTasks(tasks: Map<string, any>) {
   }
 
   if (cleaned > 0) {
-    console.log(`[TaskCleanup] 清理了 ${cleaned} 个过期任务，当前剩余 ${tasks.size} 个`);
+    logger.info('任务清理完成', { cleaned, remaining: tasks.size });
   }
 }
 
