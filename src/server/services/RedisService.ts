@@ -28,6 +28,16 @@ async function getClient(): Promise<RedisClientType | null> {
   return client;
 }
 
+export async function redisSendCommand(args: string[]): Promise<any | null> {
+  const c = await getClient();
+  if (!c) return null;
+  try {
+    return await (c as any).sendCommand(args);
+  } catch {
+    return null;
+  }
+}
+
 async function getPubClient(): Promise<RedisClientType | null> {
   const url = process.env.REDIS_URL;
   if (!url) return null;

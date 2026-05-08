@@ -13,6 +13,8 @@ async function startServer() {
   const { metricsService } = await import('./src/server/middleware/metrics');
   const { alertService } = await import('./src/server/services/AlertService');
   const { failStaleTasks } = await import('./src/server/services/TaskRecoveryService');
+  const { startTaskWorker, stopTaskWorker, getTaskQueueMode } = await import('./src/server/services/TaskQueueService');
+  const { runQueuedTask } = await import('./src/server/controllers/treeController');
 
   const config = getConfig();
   const PORT = config.port;
@@ -39,12 +41,17 @@ async function startServer() {
 
     metricsService.startAutoSnapshot(60);
     alertService.startPeriodicCheck(60);
+
+    if (getTaskQueueMode() === 'redis' && process.env.DISABLE_TASK_WORKER !== 'true') {
+      startTaskWorker(runQueuedTask).catch(() => {});
+    }
   });
 
   const shutdown = async (signal: string) => {
     console.log(`\n${signal} received, shutting down gracefully...`);
     metricsService.stopAutoSnapshot();
     alertService.stopPeriodicCheck();
+    await stopTaskWorker();
     closeWebSocket();
     server.close(async () => {
       console.log('HTTP server closed');

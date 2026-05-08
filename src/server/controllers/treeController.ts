@@ -13,6 +13,7 @@ import { getAllowedUserIds } from '../utils/auth';
 import { cleanupStaleTasks } from '../middleware/security';
 import type { PlanMeta } from '../../types/skillTree';
 import { logger } from '../utils/logger';
+import { enqueueTask, getTaskQueueMode } from '../services/TaskQueueService';
 
 const TASK_TIMEOUT_MS = parseInt(process.env.TREE_GENERATION_TIMEOUT_MS || '300000');
 const TREE_GENERATION_MODE = (process.env.TREE_GENERATION_MODE || 'full').toLowerCase();
@@ -377,6 +378,50 @@ async function processTask(taskId: string) {
   }
 }
 
+export async function runQueuedTask(taskId: string) {
+  const pool = getDb();
+  const res = await pool.query(
+    'SELECT id, user_id, status, inputs, created_at, updated_at FROM tasks WHERE id = $1',
+    [taskId]
+  );
+  if ((res.rows || []).length === 0) return;
+  const row: any = res.rows[0];
+  const status = String(row.status || '');
+  if (status === 'completed' || status === 'failed') return;
+
+  const existing = tasks.get(taskId);
+  if (!existing) {
+    if (!row.inputs) {
+      await pool.query(
+        `UPDATE tasks SET status = 'failed', error = $1, updated_at = $2 WHERE id = $3`,
+        ['任务缺少输入，无法执行', new Date().toISOString(), taskId]
+      );
+      return;
+    }
+    let inputs: GenerateTreeRequest;
+    try {
+      inputs = JSON.parse(String(row.inputs));
+    } catch {
+      await pool.query(
+        `UPDATE tasks SET status = 'failed', error = $1, updated_at = $2 WHERE id = $3`,
+        ['任务输入解析失败，无法执行', new Date().toISOString(), taskId]
+      );
+      return;
+    }
+    const task: Task = {
+      id: taskId,
+      status: 'pending',
+      inputs,
+      userId: String(row.user_id || 'default'),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    tasks.set(taskId, task);
+  }
+
+  await processTask(taskId);
+}
+
 export const treeController = {
   /**
    * 生成技能树
@@ -404,8 +449,14 @@ export const treeController = {
       const pool = getDb();
       await upsertTaskRow(pool, task);
 
-      // 后台处理任务
-      processTask(taskId).catch((e) => logger.error('任务处理失败', e));
+      if (getTaskQueueMode() === 'redis') {
+        const enqueued = await enqueueTask(taskId);
+        if (!enqueued) {
+          processTask(taskId).catch((e) => logger.error('任务处理失败', e));
+        }
+      } else {
+        processTask(taskId).catch((e) => logger.error('任务处理失败', e));
+      }
 
       // 返回任务 ID
       res.json({ taskId, status: 'pending' });
