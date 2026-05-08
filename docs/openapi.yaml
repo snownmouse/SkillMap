@@ -59,6 +59,12 @@ paths:
       responses:
         "200":
           description: OK
+  /api/auth/whoami:
+    get:
+      summary: Get current user (guest or logged-in)
+      responses:
+        "200":
+          description: OK
   /api/trees:
     get:
       summary: List trees
@@ -85,6 +91,47 @@ paths:
   /api/trees/task/{taskId}:
     get:
       summary: Get generation task status
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStatus"
+  /api/tasks/{taskId}:
+    get:
+      summary: Get task status (alias)
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStatus"
+  /api/tasks/{taskId}/cancel:
+    post:
+      summary: Cancel a task
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+  /api/tasks/{taskId}/retry:
+    post:
+      summary: Retry a failed task
       parameters:
         - in: path
           name: taskId
@@ -230,6 +277,22 @@ paths:
           description: OK
 components:
   schemas:
+    TaskStatus:
+      type: object
+      properties:
+        taskId: { type: string }
+        status: { type: string, enum: [pending, in_progress, streaming, skeleton_ready, node_filled, completed, failed] }
+        progress: { type: integer }
+        phase: { type: string }
+        preview: { type: string }
+        treeId: { type: string }
+        error: { type: string }
+        attempts: { type: integer }
+        maxAttempts: { type: integer }
+        nextRetryAt: { type: string }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [taskId, status, createdAt, updatedAt]
     GenerateTreeRequest:
       type: object
       properties:

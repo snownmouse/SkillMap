@@ -5,7 +5,7 @@ SkillMap 是一个基于 AI 的个性化技能规划与学习助手。它通过�
 ## 核心特性
 
 - **AI 驱动的技能树生成**: 输入你的专业、目标职业和当前水平，AI 为你量身定制学习路径
-- **异步生成架构**: 采用任务队列与轮询机制，支持长耗时 LLM 生成，告别请求超时
+- **异步生成架构**: 采用任务队列 + worker + 轮询/WS 推送机制，支持长耗时 LLM 生成，告别请求超时
 - **多供应商 LLM 支持**: 兼容 Ark (火山引擎)、SiliconFlow (硅基流动)、DeepSeek、通义千问等
 - **教育学深度集成**: DACUM 任务分析、布鲁姆认知分类、最近发展区 (ZPD)
 - **实时对话复盘**: 点击任何节点即可与 AI 导师对话，AI 会根据对话内容动态更新学习进度
@@ -19,7 +19,7 @@ SkillMap 是一个基于 AI 的个性化技能规划与学习助手。它通过�
 - **前端**: React 19, TypeScript, Vite, Tailwind CSS v4, Cytoscape.js, Motion, React Router v7
 - **后端**: Node.js, Express, TypeScript
 - **数据库**: SQLite (better-sqlite3), PostgreSQL (pg)
-- **缓存**: Redis（未配置则自动降级为内存缓存）
+- **缓存/队列**: Redis（未配置则限流/队列等能力自动降级）
 - **AI**: 火山引擎 Ark, 硅基流动, DeepSeek 等
 - **工具链**: TypeScript, Vite, tsx
 
@@ -50,6 +50,12 @@ npm run dev
 ```
 
 访问 `http://localhost:3000` 即可开始使用。
+
+### 3.1 启动独立 worker（可选，推荐用于多实例形态）
+
+```bash
+npm run worker
+```
 
 ### 3.1 Docker 一键启动（生产形态）
 

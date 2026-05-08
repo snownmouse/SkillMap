@@ -2,6 +2,13 @@
 
 本文档用于把当前仓库的架构风险与下一步改造方向一次性列清楚，并按“关键程度/影响面”排序，作为后续迭代的主导航。
 
+当前进度（与本仓库保持同步）：
+
+- 身份根基：已从 `x-device-id` 迁移到服务端签发的访客会话（HttpOnly Cookie + DB 映射）
+- 安全基线：CORS 生产强制白名单；WS Origin 校验 + 订阅归属校验 + 基础限流
+- PostgreSQL 兼容：移除 `gen_random_uuid()` 依赖，避免扩展缺失导致运行时报错
+- 可靠性：任务状态落库；Redis PubSub 跨实例推送；Redis Stream 队列 + worker；任务租约与自动重试；支持手动重试
+
 目标部署路径：
 
 - 第一阶段：内网多用户可用（可控网络、可控用户，但仍需严肃的权限与安全边界）
@@ -30,9 +37,10 @@
 
 ### 1.2 关键数据流（影响最大）
 
-- 技能树生成：`POST /api/trees/generate` → 创建 task → LLM 流式生成 → 写入 DB → WS 推送进度 → 前端轮询/订阅展示
+- 技能树生成：`POST /api/trees/generate` → 创建 task（落库）→（可选）入队 → worker 执行 LLM 生成 → 写入 DB → WS 推送进度 → 前端轮询/订阅展示
 - 节点对话：`POST /api/trees/:treeId/chat` → 读取上下文/写入消息 → 回写进度/能力 → 返回回复
-- 身份模型：HTTP/WS 均支持“登录用户 token”与“访客 device 身份”（当前实现对内网也有实际安全影响）
+- 身份模型：HTTP 支持“登录用户 Bearer token”与“访客 Cookie 会话”；WS 默认用 Cookie 会话，亦支持显式 `auth` 消息（Bearer token）
+- 多实例推送：WS 的 task_update 支持 Redis PubSub 跨实例广播；任务执行通过 Redis Stream 队列分发（可与 API 进程解耦）
 
 ---
 
@@ -71,6 +79,10 @@
 - 仅凭修改 header 不能切换到其他用户的数据视图
 - HTTP 与 WS 的用户身份一致且不可被伪造
 
+当前实现状态：
+
+- 已完成：服务端签发 `sm_guest` HttpOnly Cookie；在 DB `guest_sessions` 中映射到 `guest_<uuid>` 用户 ID；前端默认不再依赖 `x-device-id`
+
 ### P0-2 CORS 默认 `*` 且 `credentials: true`
 
 现状：
@@ -90,6 +102,10 @@
 
 - 生产环境不允许 `*` 作为 CORS origin
 - 仅允许受信任前端域名访问携带凭证的 API
+
+当前实现状态：
+
+- 已完成：production/staging 必须显式配置 `CORS_ORIGIN` 白名单（逗号分隔）；当允许 `*` 时自动禁用 credentials
 
 ### P0-3 WebSocket 认证与隔离不足（token 泄露与跨站连接风险）
 
@@ -117,6 +133,11 @@
 - 非白名单来源页面无法建立 WS
 - 任意 taskId 不能被不相关用户订阅到更新
 
+当前实现状态：
+
+- 已完成：WS Origin 白名单校验；订阅 task 时校验 tasks.user_id；连接数/消息频率基础限流
+- 已完成：WS 默认不再通过 URL query 传递 token（改为 Cookie 会话）；如需登录态可发送 `auth` 消息（Bearer）
+
 ### P0-4 生产敏感信息泄露（日志/调试接口）
 
 现状：
@@ -138,6 +159,10 @@
 
 - 生产日志不包含用户原始输入与 token
 - debug 路由在任何生产配置下默认不可访问
+
+当前实现状态：
+
+- 已完成：移除生成链路中的明文 `console.log(inputs)`；debug 路由仅在 `ENABLE_DEBUG_ROUTES=true` 且非 production 才挂载，并要求登录
 
 ### P0-5 PostgreSQL “必需扩展/SQL 方言”不一致（会导致部分服务运行时报错）
 
@@ -164,6 +189,10 @@
 - 在 PostgreSQL 空库联调时上述服务不再报 “function does not exist”
 - 迁移/初始化脚本确保必需扩展存在
 
+当前实现状态：
+
+- 已完成：相关服务使用应用层 UUID（不再依赖 `gen_random_uuid()`）
+
 ---
 
 ## 4. P1（公网前必须修；内网建议尽早修）
@@ -184,6 +213,11 @@
 - token 存储改为只存哈希（例如 `sha256(token)`），降低数据库泄露后的会话接管风险
 - 增加登录失败计数与冻结策略（防暴力破解）
 
+当前实现状态：
+
+- 已完成：密码哈希升级为 bcrypt（旧 sha256 用户可渐进升级）；session token/refreshToken 存储改为 `h1:sha256(rawToken)` 并兼容旧值
+- 待完善：按账号维度的冻结/验证码策略、关键行为审计日志与告警策略
+
 ### P1-2 限流与资源保护（避免 LLM/WS 被刷爆）
 
 现状：
@@ -203,6 +237,11 @@
 - 内网阶段起对高成本接口（LLM 生成/对话/导入）启用基础限流
 - 公网阶段将限流迁移到 Redis store 或网关层（Nginx/API Gateway），并限制 WS 消息频率/连接数
 
+当前实现状态：
+
+- 已完成：HTTP 限流支持 Redis store（未配置 Redis 自动降级内存）；WS 已加基础限流（消息/连接）
+- 待完善：公网场景建议把基础限流迁移到反代/网关层并统一策略（按用户/租户/来源分级）
+
 ### P1-3 任务系统可靠性（重启/多实例/排队）
 
 现状：
@@ -219,6 +258,12 @@
 
 - 内网阶段至少：任务状态落库（复用现有 `tasks` 表），`GET /api/tasks/:id` 从 DB 读取
 - 公网阶段：引入队列与 worker（或 Redis stream/BullMQ），并用 Redis PubSub 推送 WS 更新
+
+当前实现状态：
+
+- 已完成：任务状态落库（含 user_id 与 inputs）；重启时可将过期任务标记失败；支持 `POST /api/tasks/:id/retry`
+- 已完成：Redis PubSub 跨实例转发 task_update；Redis Stream 队列 + consumer group worker；DB 租约防重复执行；指数退避自动重试 + 调度器
+- 已完成：支持独立 worker 进程（`npm run worker`）与 docker-compose 分离 app/worker
 
 ### P1-4 权限模型收敛（避免“读能读/写不能写”的边界混乱）
 
@@ -307,6 +352,23 @@
 
 ---
 
+## 8. 推荐的运行形态（内网 → 公网）
+
+建议尽早将“API 进程”和“Worker 进程”分离，避免一个进程既承载请求峰值又承载长耗时任务：
+
+- API：提供 HTTP + WS，对外暴露端口
+- Worker：消费 Redis Stream 队列，执行生成任务与重试调度
+
+关键环境变量（摘要）：
+
+- `REDIS_URL`：启用 Redis store（限流、PubSub、队列）
+- `TASK_QUEUE_MODE=redis`：强制启用 Redis 队列（未设置时会根据是否有 REDIS_URL 自动选择）
+- `DISABLE_TASK_WORKER=true`：在 API 进程禁用 worker（推荐）
+- `DISABLE_TASK_SCHEDULER=true`：禁用自动重试调度（一般不建议）
+- `TASK_MAX_ATTEMPTS` / `TASK_LEASE_MS` / `TASK_STALE_MINUTES`：重试/租约/过期任务策略
+
+---
+
 ## 7. 建议的验收方式（让“信心”变成可验证的事实）
 
 为避免“感觉差不多”，建议把关键风险转成可重复验证的检查项：
@@ -316,4 +378,3 @@
 - WS：非白名单 Origin 建连失败；task 订阅必须通过归属校验
 - 重启演练：生成任务进行中重启服务，任务状态可恢复/或明确失败并可重试
 - 日志检查：生产日志抽样验证不包含用户输入原文与 token
-
