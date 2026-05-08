@@ -12,11 +12,13 @@ async function startServer() {
   const { initWebSocket, closeWebSocket } = await import('./src/server/websocket');
   const { metricsService } = await import('./src/server/middleware/metrics');
   const { alertService } = await import('./src/server/services/AlertService');
+  const { failStaleTasks } = await import('./src/server/services/TaskRecoveryService');
 
   const config = getConfig();
   const PORT = config.port;
 
   await initDatabase();
+  await failStaleTasks();
   await registerMiddleware(app);
   await registerRoutes(app);
 
