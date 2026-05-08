@@ -3,6 +3,7 @@ import { Server } from 'http';
 import crypto from 'crypto';
 import { getPool } from './database';
 import { logger } from './utils/logger';
+import { pubsubPublish, pubsubSubscribe } from './services/RedisService';
 
 interface WSClient {
   ws: WebSocket;
@@ -27,6 +28,8 @@ const ipConnectionCounts: Map<string, number> = new Map();
 
 let wss: WebSocketServer;
 let heartbeatTimer: NodeJS.Timeout | null = null;
+let unsubscribeTaskUpdates: (() => Promise<void>) | null = null;
+const INSTANCE_ID = `ws_${Math.random().toString(36).substring(2)}_${Date.now().toString(36)}`;
 
 function parseCookieHeader(header: string | undefined): Record<string, string> {
   const out: Record<string, string> = {};
@@ -89,6 +92,21 @@ export function initWebSocket(server: Server) {
       threshold: 1024,
     },
   });
+
+  if (!unsubscribeTaskUpdates) {
+    pubsubSubscribe('skillmap:task_updates', (raw) => {
+      try {
+        const msg = JSON.parse(raw);
+        if (!msg || msg.instanceId === INSTANCE_ID) return;
+        if (msg.kind !== 'task_update') return;
+        if (!msg.taskId || !msg.update) return;
+        sendTaskUpdateToClients(String(msg.taskId), msg.update);
+      } catch {
+      }
+    }).then((unsub) => {
+      if (unsub) unsubscribeTaskUpdates = unsub;
+    }).catch(() => {});
+  }
 
   wss.on('connection', (ws: WebSocket, req: any) => {
     const clientId = generateClientId();
@@ -351,6 +369,17 @@ export function notifyTaskUpdate(taskId: string, update: {
   nodeId?: string;
   nodeData?: any;
 }) {
+  sendTaskUpdateToClients(taskId, update);
+  pubsubPublish('skillmap:task_updates', JSON.stringify({
+    kind: 'task_update',
+    instanceId: INSTANCE_ID,
+    taskId,
+    update,
+    timestamp: new Date().toISOString(),
+  })).catch(() => {});
+}
+
+function sendTaskUpdateToClients(taskId: string, update: any) {
   try {
     const payload = JSON.stringify({
       type: 'task_update',
@@ -360,7 +389,7 @@ export function notifyTaskUpdate(taskId: string, update: {
     });
 
     let sent = 0;
-    for (const [clientId, client] of clients) {
+    for (const [_clientId, client] of clients) {
       if (client.taskId === taskId && client.ws.readyState === WebSocket.OPEN) {
         if (update.userId && client.userId !== update.userId) continue;
         client.ws.send(payload);
@@ -442,6 +471,10 @@ export function closeWebSocket() {
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
+  }
+  if (unsubscribeTaskUpdates) {
+    unsubscribeTaskUpdates().catch(() => {});
+    unsubscribeTaskUpdates = null;
   }
 
   logger.info('WebSocket 服务器正在关闭，断开所有连接', { count: clients.size });

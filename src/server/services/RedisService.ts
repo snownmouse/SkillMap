@@ -2,6 +2,10 @@ import { createClient, type RedisClientType } from 'redis';
 
 let client: RedisClientType | null = null;
 let connectPromise: Promise<void> | null = null;
+let pubClient: RedisClientType | null = null;
+let pubConnectPromise: Promise<void> | null = null;
+let subClient: RedisClientType | null = null;
+let subConnectPromise: Promise<void> | null = null;
 
 type CacheValue = { v: any; e?: number };
 const memoryCache = new Map<string, CacheValue>();
@@ -22,6 +26,34 @@ async function getClient(): Promise<RedisClientType | null> {
   }
   await connectPromise;
   return client;
+}
+
+async function getPubClient(): Promise<RedisClientType | null> {
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  if (!pubClient) {
+    pubClient = createClient({ url });
+    pubClient.on('error', () => {});
+  }
+  if (!pubConnectPromise) {
+    pubConnectPromise = pubClient.connect().catch(() => {}).then(() => {});
+  }
+  await pubConnectPromise;
+  return pubClient;
+}
+
+async function getSubClient(): Promise<RedisClientType | null> {
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  if (!subClient) {
+    subClient = createClient({ url });
+    subClient.on('error', () => {});
+  }
+  if (!subConnectPromise) {
+    subConnectPromise = subClient.connect().catch(() => {}).then(() => {});
+  }
+  await subConnectPromise;
+  return subClient;
 }
 
 export async function cacheGetJson<T>(key: string): Promise<T | null> {
@@ -83,6 +115,33 @@ export async function rateLimitIncr(key: string, ttlSeconds: number): Promise<nu
       await c.expire(key, ttlSeconds);
     }
     return n;
+  } catch {
+    return null;
+  }
+}
+
+export async function pubsubPublish(channel: string, message: string): Promise<void> {
+  const c = await getPubClient();
+  if (!c) return;
+  try {
+    await c.publish(channel, message);
+  } catch {
+  }
+}
+
+export async function pubsubSubscribe(channel: string, onMessage: (message: string) => void): Promise<(() => Promise<void>) | null> {
+  const c = await getSubClient();
+  if (!c) return null;
+  try {
+    await c.subscribe(channel, (message: string) => {
+      onMessage(message);
+    });
+    return async () => {
+      try {
+        await c.unsubscribe(channel);
+      } catch {
+      }
+    };
   } catch {
     return null;
   }
