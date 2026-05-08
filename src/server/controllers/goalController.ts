@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../database';
 import { generateGrowthPlan, getDimensionDescription, type PlanPath } from '../services/GrowthPathPlanner';
 import { validateSkillTreeData } from '../../utils/jsonValidator';
+import { getAllowedUserIds } from '../utils/auth';
 
 const VALID_PATHS: PlanPath[] = ['tech', 'management', 'slash', 'grassroot', 'national_strategy', 'startup', 'stable'];
 
@@ -15,16 +16,6 @@ const PATH_NAMES: Record<PlanPath, string> = {
   startup: '创新创业路线',
   stable: '稳定发展路线'
 };
-
-function getAllowedUserIds(req: Request): string[] {
-  const user = (req as any).user;
-  const userId = user?.id || 'default';
-  if (user?.isTempUser) {
-    const allowLegacyDefault = process.env.ALLOW_LEGACY_DEFAULT_USER === 'true';
-    return allowLegacyDefault ? [userId, 'default'] : [userId];
-  }
-  return [userId];
-}
 
 export const goalController = {
   async plan(req: Request, res: Response) {

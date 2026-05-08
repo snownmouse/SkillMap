@@ -1,5 +1,7 @@
 import { getPool } from '../database';
 import { getMetricsSummary } from '../middleware/metrics';
+import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../utils/logger';
 
 interface AlertRule {
   name: string;
@@ -79,7 +81,7 @@ class AlertService {
 
     this.checkInterval = setInterval(() => {
       this.runChecks().catch(err => {
-        console.error('[AlertService] Check failed:', err);
+        logger.error('AlertService 检查失败', err);
       });
     }, intervalSeconds * 1000);
   }
@@ -103,13 +105,13 @@ class AlertService {
           this.notify(rule.name, rule.message);
         }
       } catch (err) {
-        console.error(`[AlertService] Rule ${rule.name} check error:`, err);
+        logger.error(`AlertService 规则检查失败: ${rule.name}`, err);
       }
     }
   }
 
   private notify(ruleName: string, message: string) {
-    console.error(`[ALERT] ${ruleName}: ${message}`);
+    logger.error(`[ALERT] ${ruleName}: ${message}`);
 
     this.logAlert(ruleName, message).catch(() => {});
   }
@@ -117,13 +119,15 @@ class AlertService {
   private async logAlert(ruleName: string, message: string) {
     try {
       const pool = getPool();
+      const id = uuidv4();
+      const nowStr = new Date().toISOString();
       await pool.query(
         `INSERT INTO logs (id, level, service, event, message, created_at)
-         VALUES (gen_random_uuid()::text, 'error', 'alert', $1, $2, NOW())`,
-        [ruleName, message]
+         VALUES ($1, 'error', 'alert', $2, $3, $4)`,
+        [id, ruleName, message, nowStr]
       );
     } catch {
-      console.error('[AlertService] Failed to log alert to database');
+      logger.warn('AlertService 写入数据库失败');
     }
   }
 }

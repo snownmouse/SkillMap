@@ -23,25 +23,8 @@ interface ProfileResponse {
   achievements: number;
 }
 
-function getDeviceId(): string {
-  const storageKey = 'skillmap_device_id';
-  try {
-    let deviceId = localStorage.getItem(storageKey);
-    if (!deviceId) {
-      deviceId = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-      localStorage.setItem(storageKey, deviceId);
-    }
-    return deviceId;
-  } catch (error) {
-    // 如果本地存储被禁用，生成一个临时的deviceId
-    return 'temp_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-  }
-}
-
 function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    'x-device-id': getDeviceId()
-  };
+  const headers: Record<string, string> = {};
   try {
     const stored = localStorage.getItem('skillmap_state');
     if (stored) {
@@ -55,7 +38,6 @@ function getAuthHeaders(): Record<string, string> {
       }
     }
   } catch (error) {
-    // 如果本地存储被禁用，只返回deviceId
     console.warn('本地存储被禁用:', error);
   }
   return headers;
@@ -89,7 +71,8 @@ async function fetchApi<T>(url: string, options: RequestInit = {}, retryCount = 
     const response = await fetch(url, {
       ...options,
       headers,
-      signal: controller.signal
+      signal: controller.signal,
+      credentials: 'include'
     });
 
     clearTimeout(timeoutId);

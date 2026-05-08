@@ -12,6 +12,7 @@ import { getCachedSkeleton, getCachedTree, setCachedSkeleton, setCachedTree } fr
 import { getAllowedUserIds } from '../utils/auth';
 import { cleanupStaleTasks } from '../middleware/security';
 import type { PlanMeta } from '../../types/skillTree';
+import { logger } from '../utils/logger';
 
 const TASK_TIMEOUT_MS = parseInt(process.env.TREE_GENERATION_TIMEOUT_MS || '300000');
 const TREE_GENERATION_MODE = (process.env.TREE_GENERATION_MODE || 'full').toLowerCase();
@@ -79,6 +80,40 @@ interface Task {
 // 任务存储
 const tasks: Map<string, Task> = new Map();
 
+type DbTaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+
+function mapToDbStatus(status: TaskStatus): DbTaskStatus {
+  if (status === 'pending') return 'pending';
+  if (status === 'completed') return 'completed';
+  if (status === 'failed') return 'failed';
+  return 'in_progress';
+}
+
+async function upsertTaskRow(pool: any, task: Task) {
+  const nowStr = task.updatedAt.toISOString();
+  const progress = typeof task.progress === 'number' ? task.progress : 0;
+  const stage = task.phase || '';
+  const message = '';
+  const treeId = task.treeId || null;
+  const error = task.error || null;
+  const status = mapToDbStatus(task.status);
+
+  await pool.query(
+    `INSERT INTO tasks (id, user_id, status, progress, stage, message, tree_id, error, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (id) DO UPDATE SET
+       user_id = EXCLUDED.user_id,
+       status = EXCLUDED.status,
+       progress = EXCLUDED.progress,
+       stage = EXCLUDED.stage,
+       message = EXCLUDED.message,
+       tree_id = EXCLUDED.tree_id,
+       error = EXCLUDED.error,
+       updated_at = EXCLUDED.updated_at`,
+    [task.id, task.userId, status, progress, stage, message, treeId, error, nowStr]
+  );
+}
+
 // 处理任务的函数
 async function processTask(taskId: string) {
   const task = tasks.get(taskId);
@@ -92,10 +127,8 @@ async function processTask(taskId: string) {
     tasks.set(taskId, task);
     notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase: task.phase, progress: task.progress });
 
-    console.log('=== 开始生成技能树 ===');
-    console.log('请求体:', JSON.stringify(task.inputs, null, 2));
-
     const pool = getDb();
+    await upsertTaskRow(pool, task);
 
     let previewBuffer = '';
     const pushPreview = (delta: string) => {
@@ -148,6 +181,7 @@ async function processTask(taskId: string) {
         task.updatedAt = new Date();
         tasks.set(taskId, task);
         notifyTaskUpdate(taskId, { status: 'completed', userId: task.userId, treeId, progress: 100, phase: task.phase });
+        await upsertTaskRow(pool, task);
         return;
       }
 
@@ -194,7 +228,7 @@ async function processTask(taskId: string) {
       task.updatedAt = new Date();
       tasks.set(taskId, task);
       notifyTaskUpdate(taskId, { status: 'completed', userId: task.userId, treeId, progress: 100, phase: task.phase });
-      console.log('=== 生成技能树完成 ===');
+      await upsertTaskRow(pool, task);
       return;
     }
 
@@ -323,16 +357,21 @@ async function processTask(taskId: string) {
       phase: hadFailures ? '生成完成（部分节点待补全）' : '生成完成',
       message: hadFailures ? '部分节点详情生成失败，可先浏览结构与已填充内容' : undefined
     });
-
-    console.log('=== 生成技能树完成 ===');
+    await upsertTaskRow(pool, task);
   } catch (error) {
-    console.error('生成技能树失败:', error);
+    logger.error('生成技能树失败', error);
     // 更新任务状态为失败
     task.status = 'failed';
     task.error = error instanceof Error ? error.message : '生成失败';
     task.updatedAt = new Date();
     tasks.set(taskId, task);
     notifyTaskUpdate(taskId, { status: 'failed', userId: task.userId, treeId: task.treeId, error: task.error, progress: task.progress, phase: task.phase });
+    try {
+      const pool = getDb();
+      await upsertTaskRow(pool, task);
+    } catch (e) {
+      logger.warn('任务落库失败', { taskId, error: (e as Error).message });
+    }
   }
 }
 
@@ -343,17 +382,10 @@ export const treeController = {
   async generate(req: Request, res: Response) {
     try {
       const inputs: GenerateTreeRequest = req.body;
-      console.log('=== 接收到生成技能树请求 ===');
-      console.log('请求体:', JSON.stringify(inputs, null, 2));
-      console.log('inputs.career:', inputs.career);
-      console.log('typeof inputs.career:', typeof inputs.career);
-      console.log('inputs.career.trim():', inputs.career?.trim());
       
       if (!inputs.major || !inputs.career || typeof inputs.career !== 'string' || inputs.career.trim() === '') {
-        console.log('验证失败，返回 400 错误');
         return res.status(400).json({ error: '专业和目标职业是必填项' });
       }
-      console.log('验证成功，创建任务');
 
       // 创建任务
       const taskId = uuidv4();
@@ -367,14 +399,16 @@ export const treeController = {
         updatedAt: new Date()
       };
       tasks.set(taskId, task);
+      const pool = getDb();
+      await upsertTaskRow(pool, task);
 
       // 后台处理任务
-      processTask(taskId).catch(console.error);
+      processTask(taskId).catch((e) => logger.error('任务处理失败', e));
 
       // 返回任务 ID
       res.json({ taskId, status: 'pending' });
     } catch (error) {
-      console.error('创建任务失败:', error);
+      logger.error('创建任务失败', error);
       res.status(500).json({ error: error instanceof Error ? error.message : '创建任务失败' });
     }
   },
@@ -387,29 +421,47 @@ export const treeController = {
       const { taskId } = req.params;
       const task = tasks.get(taskId);
 
-      if (!task) {
-        return res.status(404).json({ error: '任务不存在' });
-      }
-
       const requesterId = (req as any).user?.id || 'default';
-      if (task.userId !== requesterId) {
-        return res.status(404).json({ error: '任务不存在' });
+      if (task) {
+        if (task.userId !== requesterId) {
+          return res.status(404).json({ error: '任务不存在' });
+        }
+        res.json({
+          taskId: task.id,
+          status: task.status,
+          result: task.result,
+          error: task.error,
+          progress: task.progress,
+          phase: task.phase,
+          preview: task.preview,
+          treeId: task.treeId,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt
+        });
+        return;
       }
 
+      const pool = getDb();
+      const dbRes = await pool.query(
+        'SELECT id, status, progress, stage, message, tree_id, error, created_at, updated_at FROM tasks WHERE id = $1 AND user_id = $2',
+        [taskId, requesterId]
+      );
+      if ((dbRes.rows || []).length === 0) {
+        return res.status(404).json({ error: '任务不存在' });
+      }
+      const row: any = dbRes.rows[0];
       res.json({
-        taskId: task.id,
-        status: task.status,
-        result: task.result,
-        error: task.error,
-        progress: task.progress,
-        phase: task.phase,
-        preview: task.preview,
-        treeId: task.treeId,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt
+        taskId: String(row.id),
+        status: String(row.status),
+        error: row.error ? String(row.error) : undefined,
+        progress: typeof row.progress === 'number' ? row.progress : parseInt(row.progress || '0'),
+        phase: row.stage ? String(row.stage) : undefined,
+        treeId: row.tree_id ? String(row.tree_id) : undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
       });
     } catch (error) {
-      console.error('获取任务状态失败:', error);
+      logger.error('获取任务状态失败', error);
       res.status(500).json({ error: error instanceof Error ? error.message : '获取任务状态失败' });
     }
   },
@@ -438,6 +490,12 @@ export const treeController = {
       task.updatedAt = new Date();
       tasks.set(taskId, task);
       notifyTaskUpdate(taskId, { status: 'failed', userId: task.userId, treeId: task.treeId, error: task.error, progress: task.progress, phase: task.phase });
+      try {
+        const pool = getDb();
+        await upsertTaskRow(pool, task);
+      } catch (e) {
+        logger.warn('任务取消落库失败', { taskId, error: (e as Error).message });
+      }
 
       res.json({ success: true, message: '任务已取消' });
     } catch (error) {
@@ -498,7 +556,7 @@ export const treeController = {
       res.setHeader('Content-Disposition', `attachment; filename="${buildExportFileName(data.career, 'export')}"`);
       res.send(JSON.stringify(payload, null, 2));
     } catch (error) {
-      console.error('导出技能树失败:', error);
+      logger.error('导出技能树失败', error);
       res.status(500).json({ error: '导出失败' });
     }
   },
@@ -526,7 +584,7 @@ export const treeController = {
       res.setHeader('Content-Disposition', `attachment; filename="${buildExportFileName(data.career, 'tree')}"`);
       res.send(JSON.stringify(data, null, 2));
     } catch (error) {
-      console.error('导出技能树 JSON 失败:', error);
+      logger.error('导出技能树 JSON 失败', error);
       res.status(500).json({ error: '导出JSON失败' });
     }
   },
@@ -562,7 +620,7 @@ export const treeController = {
         data: importedTree
       });
     } catch (error) {
-      console.error('导入技能树失败:', error);
+      logger.error('导入技能树失败', error);
       res.status(500).json({ error: error instanceof Error ? error.message : '导入失败' });
     }
   },
@@ -646,7 +704,7 @@ export const treeController = {
         },
       });
     } catch (error) {
-      console.error('获取列表失败:', error);
+      logger.error('获取列表失败', error);
       res.status(500).json({ error: '获取列表失败' });
     }
   },

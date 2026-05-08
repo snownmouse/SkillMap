@@ -1,6 +1,7 @@
 import { getPool } from '../database';
 import type pg from 'pg';
 import { SkillTermRepository } from '../repositories';
+import { v4 as uuidv4 } from 'uuid';
 
 export class QualityAssessmentService {
   private pool: pg.Pool;
@@ -20,17 +21,19 @@ export class QualityAssessmentService {
     const structureScore = this.assessStructure(treeData);
     const contentScore = await this.assessContent(treeData);
     const overallScore = Math.round(structureScore * 0.4 + contentScore * 0.6);
+    const id = uuidv4();
+    const nowStr = new Date().toISOString();
 
     await this.pool.query(
       `INSERT INTO tree_quality_scores (id, tree_id, overall_score, structure_score, content_score, details, assessed_at)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, NOW())
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (tree_id) DO UPDATE SET
          overall_score = EXCLUDED.overall_score,
          structure_score = EXCLUDED.structure_score,
          content_score = EXCLUDED.content_score,
          details = EXCLUDED.details,
-         assessed_at = NOW()`,
-      [treeId, overallScore, structureScore, contentScore, JSON.stringify({ structureScore, contentScore })]
+         assessed_at = $7`,
+      [id, treeId, overallScore, structureScore, contentScore, JSON.stringify({ structureScore, contentScore }), nowStr]
     );
 
     return { overallScore, structureScore, contentScore, details: { structureScore, contentScore } };

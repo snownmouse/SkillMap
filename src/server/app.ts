@@ -13,12 +13,36 @@ export function createApp() {
 
   app.set('trust proxy', 1);
 
-  app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true,
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isProductionLike = nodeEnv === 'production' || nodeEnv === 'staging';
+  if (isProductionLike && process.env.ALLOW_LEGACY_DEFAULT_USER === 'true') {
+    throw new Error('production/staging 禁止启用 ALLOW_LEGACY_DEFAULT_USER');
+  }
+  const rawOrigins = (process.env.CORS_ORIGIN || '').trim();
+  const originList = rawOrigins
+    ? rawOrigins.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  if (isProductionLike && originList.length === 0) {
+    throw new Error('production/staging 必须显式配置 CORS_ORIGIN（逗号分隔的允许来源列表）');
+  }
+
+  const allowAll = originList.includes('*');
+  const corsOptions: cors.CorsOptions = {
+    origin: allowAll
+      ? '*'
+      : (origin, cb) => {
+          if (!origin) return cb(null, true);
+          if (originList.length === 0) return cb(null, true);
+          if (originList.includes(origin)) return cb(null, true);
+          return cb(null, false);
+        },
+    credentials: !allowAll,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id'],
-  }));
+  };
+
+  app.use(cors(corsOptions));
 
   app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ extended: true, limit: '5mb' }));

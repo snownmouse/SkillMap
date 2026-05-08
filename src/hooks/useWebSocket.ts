@@ -29,20 +29,6 @@ const getSecureToken = (): string | null => {
   }
 };
 
-const getDeviceId = (): string => {
-  const storageKey = 'skillmap_device_id';
-  try {
-    let deviceId = localStorage.getItem(storageKey);
-    if (!deviceId) {
-      deviceId = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-      localStorage.setItem(storageKey, deviceId);
-    }
-    return deviceId;
-  } catch {
-    return 'temp_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-  }
-};
-
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const wsRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -52,65 +38,69 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const hasEverConnected = useRef(false);
 
   const connect = useCallback(() => {
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws?deviceId=${encodeURIComponent(getDeviceId())}`;
+    (async () => {
+      try {
+        await fetch('/api/auth/whoami', { credentials: 'include' });
 
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-      ws.onopen = () => {
-        hasEverConnected.current = true;
-        setIsConnected(true);
-        reconnectAttemptsRef.current = 0;
-        options.onConnected?.();
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
 
-        const token = getSecureToken();
-        if (token) {
-          ws.send(JSON.stringify({ type: 'auth', token }));
-        }
-      };
+        ws.onopen = () => {
+          hasEverConnected.current = true;
+          setIsConnected(true);
+          reconnectAttemptsRef.current = 0;
+          options.onConnected?.();
 
-      ws.onmessage = (event) => {
-        try {
-          const message: WSMessage = JSON.parse(event.data);
-
-          switch (message.type) {
-            case 'task_update':
-              options.onTaskUpdate?.(message);
-              break;
-            case 'progress_update':
-              options.onProgressUpdate?.(message);
-              break;
-            case 'achievement_earned':
-              options.onAchievement?.(message);
-              break;
-            case 'connected':
-              break;
+          const token = getSecureToken();
+          if (token) {
+            ws.send(JSON.stringify({ type: 'auth', token }));
           }
-        } catch (e) {
-          console.error('WebSocket message parse error:', e);
-        }
-      };
+        };
 
-      ws.onclose = () => {
-        setIsConnected(false);
-        wsRef.current = null;
+        ws.onmessage = (event) => {
+          try {
+            const message: WSMessage = JSON.parse(event.data);
 
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current++;
-            connect();
-          }, delay);
-        }
-      };
+            switch (message.type) {
+              case 'task_update':
+                options.onTaskUpdate?.(message);
+                break;
+              case 'progress_update':
+                options.onProgressUpdate?.(message);
+                break;
+              case 'achievement_earned':
+                options.onAchievement?.(message);
+                break;
+              case 'connected':
+                break;
+            }
+          } catch (e) {
+            console.error('WebSocket message parse error:', e);
+          }
+        };
 
-      ws.onerror = (_event) => {
-      };
-    } catch (e) {
-      console.error('WebSocket connection failed:', e);
-    }
+        ws.onclose = () => {
+          setIsConnected(false);
+          wsRef.current = null;
+
+          if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectAttemptsRef.current++;
+              connect();
+            }, delay);
+          }
+        };
+
+        ws.onerror = (_event) => {
+        };
+      } catch (e) {
+        console.error('WebSocket connection failed:', e);
+      }
+    })();
   }, [options]);
 
   const subscribeTask = useCallback((taskId: string) => {

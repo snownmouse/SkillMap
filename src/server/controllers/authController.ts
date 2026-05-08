@@ -401,6 +401,9 @@ export const authController = {
       res.status(500).json({ error: '验证失败，请稍后重试' });
     }
   },
+  async whoami(req: Request, res: Response) {
+    res.json({ user: (req as any).user || null });
+  },
   async logout(req: Request, res: Response) {
     try {
       const authHeader = req.headers.authorization;
@@ -553,14 +556,89 @@ export const authController = {
   }
 };
 
+const GUEST_COOKIE_NAME = 'sm_guest';
+const GUEST_TTL_DAYS = parseInt(process.env.GUEST_SESSION_TTL_DAYS || '30');
+
+function parseCookieHeader(header: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!header) return out;
+  const parts = header.split(';');
+  for (const part of parts) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const k = part.slice(0, idx).trim();
+    const v = part.slice(idx + 1).trim();
+    if (!k) continue;
+    out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+function sha256Hex(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function buildGuestSetCookie(token: string, nodeEnv: string): string {
+  const maxAgeSeconds = Math.max(1, GUEST_TTL_DAYS) * 24 * 60 * 60;
+  const secure = nodeEnv === 'production' || nodeEnv === 'staging';
+  return [
+    `${GUEST_COOKIE_NAME}=${encodeURIComponent(token)}`,
+    'Path=/',
+    `Max-Age=${maxAgeSeconds}`,
+    'HttpOnly',
+    'SameSite=Lax',
+    secure ? 'Secure' : '',
+  ].filter(Boolean).join('; ');
+}
+
+async function getOrCreateGuestUser(req: Request, res: Response, pool: any) {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const cookies = parseCookieHeader(req.headers.cookie as string | undefined);
+  const cookieToken = cookies[GUEST_COOKIE_NAME];
+
+  const now = new Date();
+  const nowStr = now.toISOString();
+  const expiresAt = new Date(now.getTime());
+  expiresAt.setDate(expiresAt.getDate() + Math.max(1, GUEST_TTL_DAYS));
+  const expiresAtStr = expiresAt.toISOString();
+
+  if (cookieToken) {
+    const tokenHash = sha256Hex(cookieToken);
+    const result = await pool.query(
+      `SELECT user_id FROM guest_sessions WHERE token_hash = $1 AND expires_at > $2`,
+      [tokenHash, nowStr]
+    );
+    if (result.rows?.length > 0) {
+      const userId = String(result.rows[0].user_id);
+      await pool.query(
+        `UPDATE guest_sessions SET last_seen_at = $1 WHERE token_hash = $2`,
+        [nowStr, tokenHash]
+      );
+      return { id: userId, username: '访客', displayName: '访客', isTempUser: true };
+    }
+  }
+
+  const newToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = sha256Hex(newToken);
+  const userId = `guest_${uuidv4()}`;
+
+  await pool.query(
+    `INSERT INTO guest_sessions (token_hash, user_id, expires_at, created_at, last_seen_at)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [tokenHash, userId, expiresAtStr, nowStr, nowStr]
+  );
+
+  res.setHeader('Set-Cookie', buildGuestSetCookie(newToken, nodeEnv));
+  return { id: userId, username: '访客', displayName: '访客', isTempUser: true };
+}
+
 export async function optionalAuth(req: Request, res: Response, next: any) {
   try {
     const authHeader = req.headers.authorization;
     const pool = getPool();
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const deviceId = (req.headers['x-device-id'] as string) || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      (req as any).user = { id: `device_${deviceId}`, username: '访客', displayName: '访客', isTempUser: true };
+      (req as any).user = await getOrCreateGuestUser(req, res, pool);
       return next();
     }
 
@@ -588,8 +666,13 @@ export async function optionalAuth(req: Request, res: Response, next: any) {
     next();
   } catch (error) {
     logger.error('optionalAuth 失败', error);
-    const deviceId = (req.headers['x-device-id'] as string) || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    (req as any).user = { id: `device_${deviceId}`, username: '访客', displayName: '访客', isTempUser: true };
+    try {
+      const pool = getPool();
+      (req as any).user = await getOrCreateGuestUser(req, res, pool);
+    } catch (e) {
+      const deviceId = (req.headers['x-device-id'] as string) || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      (req as any).user = { id: `device_${deviceId}`, username: '访客', displayName: '访客', isTempUser: true };
+    }
     next();
   }
 }

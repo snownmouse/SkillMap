@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket, CloseEvent } from 'ws';
 import { Server } from 'http';
+import crypto from 'crypto';
 import { getPool } from './database';
 import { logger } from './utils/logger';
 
@@ -10,14 +11,68 @@ interface WSClient {
   lastPongAt: number;
   isAlive: boolean;
   connectedAt: number;
+  ip?: string;
+  windowStartedAt?: number;
+  windowMessageCount?: number;
 }
 
 const clients: Map<string, WSClient> = new Map();
 const HEARTBEAT_INTERVAL_MS = 30000;
 const CONNECTION_TIMEOUT_MS = 60000;
+const WS_RATE_WINDOW_MS = parseInt(process.env.WS_RATE_WINDOW_MS || '10000');
+const WS_MAX_MESSAGES_PER_WINDOW = parseInt(process.env.WS_MAX_MESSAGES_PER_WINDOW || '50');
+const WS_MAX_CONNECTIONS_PER_IP = parseInt(process.env.WS_MAX_CONNECTIONS_PER_IP || '20');
+
+const ipConnectionCounts: Map<string, number> = new Map();
 
 let wss: WebSocketServer;
 let heartbeatTimer: NodeJS.Timeout | null = null;
+
+function parseCookieHeader(header: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!header) return out;
+  const parts = header.split(';');
+  for (const part of parts) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const k = part.slice(0, idx).trim();
+    const v = part.slice(idx + 1).trim();
+    if (!k) continue;
+    out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+function sha256Hex(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function getAllowedOrigins(): string[] {
+  const raw = (process.env.CORS_ORIGIN || '').trim();
+  if (!raw) return [];
+  return raw.split(',').map(s => s.trim()).filter(Boolean).filter(o => o !== '*');
+}
+
+function getClientIp(req: any): string {
+  const forwarded = (req?.headers?.['x-forwarded-for'] as string | undefined) || undefined;
+  if (forwarded) return forwarded.split(',')[0]?.trim() || 'unknown';
+  return req?.socket?.remoteAddress || req?.connection?.remoteAddress || 'unknown';
+}
+
+async function resolveUserIdFromGuestCookie(req: any): Promise<string | null> {
+  const cookies = parseCookieHeader(req?.headers?.cookie);
+  const token = cookies['sm_guest'];
+  if (!token) return null;
+  const tokenHash = sha256Hex(token);
+  const pool = getPool();
+  const nowStr = new Date().toISOString();
+  const result = await pool.query(
+    `SELECT user_id FROM guest_sessions WHERE token_hash = $1 AND expires_at > $2`,
+    [tokenHash, nowStr]
+  );
+  if ((result.rows || []).length === 0) return null;
+  return String(result.rows[0].user_id);
+}
 
 export function initWebSocket(server: Server) {
   wss = new WebSocketServer({ 
@@ -34,6 +89,20 @@ export function initWebSocket(server: Server) {
   wss.on('connection', (ws: WebSocket, req: any) => {
     const clientId = generateClientId();
     let userId = 'default';
+    const ip = getClientIp(req);
+    const currentCount = ipConnectionCounts.get(ip) || 0;
+    if (currentCount >= WS_MAX_CONNECTIONS_PER_IP) {
+      ws.close(1013, 'Too many connections');
+      return;
+    }
+    ipConnectionCounts.set(ip, currentCount + 1);
+    const origin = (req?.headers?.origin as string | undefined) || undefined;
+    const allowedOrigins = getAllowedOrigins();
+    if (allowedOrigins.length > 0 && origin && !allowedOrigins.includes(origin)) {
+      ws.close(1008, 'Origin not allowed');
+      ipConnectionCounts.set(ip, Math.max(0, (ipConnectionCounts.get(ip) || 1) - 1));
+      return;
+    }
 
     const client: WSClient = {
       ws,
@@ -41,6 +110,9 @@ export function initWebSocket(server: Server) {
       lastPongAt: Date.now(),
       isAlive: true,
       connectedAt: Date.now(),
+      ip,
+      windowStartedAt: Date.now(),
+      windowMessageCount: 0,
     };
 
     ws.on('pong', () => {
@@ -50,28 +122,11 @@ export function initWebSocket(server: Server) {
 
     const authPromise = (async () => {
       try {
-        const url = new URL(req.url || '', 'http://localhost');
-        const token = url.searchParams.get('token');
-        const deviceId = url.searchParams.get('deviceId');
-
-        if (token) {
-          const pool = getPool();
-          const result = await pool.query(
-            `SELECT s.user_id FROM sessions s
-             WHERE s.token = $1 AND s.expires_at > NOW()`,
-            [token]
-          );
-
-          if (result.rows.length > 0) {
-            userId = result.rows[0].user_id;
-            client.userId = userId;
-          }
-          return;
-        }
-
-        if (deviceId) {
-          userId = `device_${deviceId}`;
+        const guestUserId = await resolveUserIdFromGuestCookie(req);
+        if (guestUserId) {
+          userId = guestUserId;
           client.userId = userId;
+          return;
         }
       } catch (e) {
         logger.warn('WebSocket 认证失败，使用默认用户', { error: (e as Error).message });
@@ -91,6 +146,17 @@ export function initWebSocket(server: Server) {
 
       ws.on('message', (data: any) => {
         try {
+          const now = Date.now();
+          if (!client.windowStartedAt || now - client.windowStartedAt >= WS_RATE_WINDOW_MS) {
+            client.windowStartedAt = now;
+            client.windowMessageCount = 0;
+          }
+          client.windowMessageCount = (client.windowMessageCount || 0) + 1;
+          if (client.windowMessageCount > WS_MAX_MESSAGES_PER_WINDOW) {
+            ws.close(1008, 'Rate limit');
+            return;
+          }
+
           const message = JSON.parse(data.toString());
           if (message.type === 'pong') {
             client.lastPongAt = Date.now();
@@ -109,6 +175,9 @@ export function initWebSocket(server: Server) {
       ws.on('close', (code: number, reason: Buffer) => {
         const duration = Math.round((Date.now() - client.connectedAt) / 1000);
         clients.delete(clientId);
+        if (client.ip) {
+          ipConnectionCounts.set(client.ip, Math.max(0, (ipConnectionCounts.get(client.ip) || 1) - 1));
+        }
         logger.info('WebSocket 客户端断开', { 
           clientId, 
           userId,
@@ -126,6 +195,9 @@ export function initWebSocket(server: Server) {
           stack: error.stack 
         });
         clients.delete(clientId);
+        if (client.ip) {
+          ipConnectionCounts.set(client.ip, Math.max(0, (ipConnectionCounts.get(client.ip) || 1) - 1));
+        }
       });
     }).catch((error) => {
       logger.error('WebSocket 连接初始化失败', { 
@@ -190,8 +262,21 @@ function handleMessage(clientId: string, message: any) {
         logger.warn('WebSocket 订阅任务失败：缺少 taskId', { clientId });
         return;
       }
-      client.taskId = message.taskId;
-      logger.info('WebSocket 订阅任务', { clientId, taskId: message.taskId });
+      (async () => {
+        try {
+          const pool = getPool();
+          const res = await pool.query('SELECT user_id FROM tasks WHERE id = $1', [message.taskId]);
+          const owner = res.rows?.[0]?.user_id ? String(res.rows[0].user_id) : null;
+          if (!owner || owner !== client.userId) {
+            logger.warn('WebSocket 订阅任务拒绝：任务不属于当前用户', { clientId, taskId: message.taskId });
+            return;
+          }
+          client.taskId = message.taskId;
+          logger.info('WebSocket 订阅任务', { clientId, taskId: message.taskId });
+        } catch (e) {
+          logger.warn('WebSocket 订阅任务失败', { clientId, taskId: message.taskId, error: (e as Error).message });
+        }
+      })();
       break;
     case 'unsubscribe_task':
       client.taskId = undefined;
