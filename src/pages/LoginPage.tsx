@@ -33,26 +33,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
-        const storageKey = 'skillmap_device_id';
-        let deviceId = '';
-        try {
-          deviceId = localStorage.getItem(storageKey) || '';
-          if (!deviceId) {
-            deviceId = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-            localStorage.setItem(storageKey, deviceId);
-          }
-        } catch {
-          deviceId = '';
-        }
-
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(deviceId ? { 'x-device-id': deviceId } : {})
           },
           body: JSON.stringify(body),
           signal: controller.signal,
+          credentials: 'include',
         });
 
         clearTimeout(timeoutId);

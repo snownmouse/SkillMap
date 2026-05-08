@@ -738,13 +738,8 @@ export async function optionalAuth(req: Request, res: Response, next: any) {
     next();
   } catch (error) {
     logger.error('optionalAuth 失败', error);
-    try {
-      const pool = getPool();
-      (req as any).user = await getOrCreateGuestUser(req, res, pool);
-    } catch (e) {
-      const deviceId = (req.headers['x-device-id'] as string) || `temp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      (req as any).user = { id: `device_${deviceId}`, username: '访客', displayName: '访客', isTempUser: true };
-    }
+    const pool = getPool();
+    (req as any).user = await getOrCreateGuestUser(req, res, pool);
     next();
   }
 }

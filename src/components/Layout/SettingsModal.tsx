@@ -14,16 +14,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   const handleLogout = async () => {
     try {
-      const storageKey = 'skillmap_device_id';
-      const deviceId = localStorage.getItem(storageKey) || '';
       const token = state.auth?.token;
       await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(deviceId ? { 'x-device-id': deviceId } : {}),
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        }
+        },
+        credentials: 'include',
       });
     } catch {
     } finally {
