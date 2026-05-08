@@ -21,6 +21,7 @@ const GeneratePage: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState('正在准备...');
   const [preview, setPreview] = useState('');
+  const [canRetry, setCanRetry] = useState(false);
 
   useTaskWebSocket(taskId, async (update) => {
     if (update.progress !== undefined) setProgress(update.progress);
@@ -50,6 +51,7 @@ const GeneratePage: React.FC = () => {
       storage.clearPendingTask();
       setError(update.error || '生成失败，请稍后重试');
       setGenerating(false);
+      setCanRetry(true);
       return;
     }
   });
@@ -78,6 +80,7 @@ const GeneratePage: React.FC = () => {
           storage.clearPendingTask();
           setError(status.error || '生成失败，请稍后重试');
           setGenerating(false);
+          setCanRetry(true);
           break;
         case 'pending':
         case 'in_progress':
@@ -115,6 +118,7 @@ const GeneratePage: React.FC = () => {
     setCareer(pendingTask.career || '');
     setGenerating(true);
     setError(null);
+    setCanRetry(false);
     setProgress(5);
     setPhase('正在准备...');
     pollTaskStatus(pendingTask.taskId, new Date(pendingTask.createdAt).getTime());
@@ -123,6 +127,7 @@ const GeneratePage: React.FC = () => {
   const handleGenerate = async (input: UserInput) => {
     setGenerating(true);
     setError(null);
+    setCanRetry(false);
     setCareer(input.career);
     setProgress(5);
     setPhase('正在准备...');
@@ -148,12 +153,32 @@ const GeneratePage: React.FC = () => {
   const handleCancel = async () => {
     if (!taskId) return;
     try {
-      await fetch(`/api/tasks/${taskId}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...difyApi.getAuthHeaders() } });
+      await difyApi.cancelTask(taskId);
     } catch {
     } finally {
       storage.clearPendingTask();
       setGenerating(false);
       setError('已取消生成');
+      setCanRetry(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    if (!taskId) return;
+    try {
+      setError(null);
+      setCanRetry(false);
+      setGenerating(true);
+      setProgress(5);
+      setPhase('正在准备...');
+      setPreview('');
+      await difyApi.retryTask(taskId);
+      storage.savePendingTask({ taskId, career, createdAt: new Date().toISOString() });
+      pollTaskStatus(taskId, Date.now());
+    } catch {
+      setGenerating(false);
+      setError('重试失败，请稍后再试');
+      setCanRetry(true);
     }
   };
 
@@ -171,6 +196,16 @@ const GeneratePage: React.FC = () => {
             <div className="mx-auto mb-6 w-full max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {error}
               {taskId && <span className="ml-2 text-red-300/80">任务 ID: {taskId}</span>}
+              {canRetry && taskId && (
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    onClick={handleRetry}
+                    className="rounded-xl bg-red-500/20 px-3 py-1 text-xs text-red-100 hover:bg-red-500/30"
+                  >
+                    重试任务
+                  </button>
+                </div>
+              )}
             </div>
           )}
           <div className="mx-auto w-full max-w-2xl">

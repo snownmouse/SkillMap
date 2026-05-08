@@ -98,6 +98,7 @@ const TreePage: React.FC = () => {
         if (status.status === 'failed') {
           storage.clearPendingTask();
           setPendingTaskId(null);
+          setActionMessage('生成任务失败，可回到生成页重试。');
           return;
         }
         setTimeout(tick, 10000);

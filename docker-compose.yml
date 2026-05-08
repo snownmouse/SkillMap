@@ -36,6 +36,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       REDIS_URL: redis://redis:6379
+      DISABLE_TASK_WORKER: "true"
     ports:
       - "3000:3000"
     depends_on:
@@ -44,6 +45,23 @@ services:
       redis:
         condition: service_healthy
 
+  worker:
+    build: .
+    command: ["npm", "run", "worker"]
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: skillmap
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      REDIS_URL: redis://redis:6379
+      TASK_QUEUE_MODE: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   pgdata:
-

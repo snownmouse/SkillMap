@@ -8,6 +8,9 @@ export interface TaskStatus {
   phase?: string;
   preview?: string;
   treeId?: string;
+  attempts?: number;
+  maxAttempts?: number;
+  nextRetryAt?: string;
   result?: {
     id: string;
     data: SkillTreeData;
@@ -59,17 +62,6 @@ export const difyApi = {
   getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {};
     try {
-      const storageKey = 'skillmap_device_id';
-      let deviceId = localStorage.getItem(storageKey);
-      if (!deviceId) {
-        deviceId = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        localStorage.setItem(storageKey, deviceId);
-      }
-      headers['x-device-id'] = deviceId;
-    } catch {
-    }
-
-    try {
       const stored = localStorage.getItem('skillmap_state');
       if (stored) {
         const state = JSON.parse(stored);
@@ -102,6 +94,7 @@ export const difyApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
       body: JSON.stringify(formattedInput),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -127,6 +120,7 @@ export const difyApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
       body: JSON.stringify(payload),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -146,6 +140,7 @@ export const difyApi = {
     const response = await fetch(`/api/trees/task/${taskId}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -160,6 +155,7 @@ export const difyApi = {
     const response = await fetch(`/api/trees/${treeId}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -180,6 +176,7 @@ export const difyApi = {
     const response = await fetch(`/api/trees${query}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -194,7 +191,8 @@ export const difyApi = {
     const response = await fetch(`/api/trees/${treeId}/export`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
-      body: JSON.stringify({})
+      body: JSON.stringify({}),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -211,7 +209,8 @@ export const difyApi = {
   async exportJSON(treeId: string): Promise<DownloadFileResult> {
     const response = await fetch(`/api/trees/${treeId}/export-json`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() }
+      headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -229,7 +228,8 @@ export const difyApi = {
     const response = await fetch('/api/trees/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -244,6 +244,7 @@ export const difyApi = {
     const response = await fetch(`/api/trees/${treeId}/chat/${nodeId}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -277,6 +278,7 @@ export const difyApi = {
         nodeId: params.nodeId,
         message: params.userMessage
       }),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -285,5 +287,21 @@ export const difyApi = {
     }
 
     return response.json();
-  }
+  },
+
+  async cancelTask(taskId: string): Promise<void> {
+    await fetch(`/api/tasks/${taskId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+      credentials: 'include',
+    });
+  },
+
+  async retryTask(taskId: string): Promise<void> {
+    await fetch(`/api/tasks/${taskId}/retry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+      credentials: 'include',
+    });
+  },
 };
