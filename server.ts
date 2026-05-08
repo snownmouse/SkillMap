@@ -15,6 +15,7 @@ async function startServer() {
   const { failStaleTasks } = await import('./src/server/services/TaskRecoveryService');
   const { startTaskWorker, stopTaskWorker, getTaskQueueMode } = await import('./src/server/services/TaskQueueService');
   const { runQueuedTask } = await import('./src/server/controllers/treeController');
+  const { startTaskRetryScheduler, stopTaskRetryScheduler } = await import('./src/server/services/TaskSchedulerService');
 
   const config = getConfig();
   const PORT = config.port;
@@ -45,12 +46,16 @@ async function startServer() {
     if (getTaskQueueMode() === 'redis' && process.env.DISABLE_TASK_WORKER !== 'true') {
       startTaskWorker(runQueuedTask).catch(() => {});
     }
+    if (getTaskQueueMode() === 'redis') {
+      startTaskRetryScheduler();
+    }
   });
 
   const shutdown = async (signal: string) => {
     console.log(`\n${signal} received, shutting down gracefully...`);
     metricsService.stopAutoSnapshot();
     alertService.stopPeriodicCheck();
+    stopTaskRetryScheduler();
     await stopTaskWorker();
     closeWebSocket();
     server.close(async () => {

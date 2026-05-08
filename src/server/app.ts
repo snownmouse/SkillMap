@@ -90,6 +90,7 @@ export async function registerRoutes(app: express.Express) {
 
   app.get('/api/tasks/:taskId', optionalAuth, treeController.getTaskStatus);
   app.post('/api/tasks/:taskId/cancel', optionalAuth, treeController.cancelTask);
+  app.post('/api/tasks/:taskId/retry', optionalAuth, treeController.retryTask);
 
   const { rateLimit } = await import('./middleware/security');
   if (isProduction) {

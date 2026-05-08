@@ -99,10 +99,16 @@ async function upsertTaskRow(pool: any, task: Task) {
   const error = task.error || null;
   const status = mapToDbStatus(task.status);
   const inputs = task.inputs ? JSON.stringify(task.inputs) : null;
+  const maxAttempts = Math.max(1, parseInt(process.env.TASK_MAX_ATTEMPTS || '3'));
+  const isTerminal = status === 'completed' || status === 'failed';
+  const leaseOwner = isTerminal ? null : undefined;
+  const leaseExpiresAt = isTerminal ? null : undefined;
+  const nextRetryAt = isTerminal ? null : undefined;
+  const lastFinishedAt = isTerminal ? nowStr : undefined;
 
   await pool.query(
-    `INSERT INTO tasks (id, user_id, status, progress, stage, message, tree_id, error, updated_at, inputs)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO tasks (id, user_id, status, progress, stage, message, tree_id, error, updated_at, inputs, max_attempts, lease_owner, lease_expires_at, next_retry_at, last_finished_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      ON CONFLICT (id) DO UPDATE SET
        user_id = EXCLUDED.user_id,
        status = EXCLUDED.status,
@@ -112,8 +118,13 @@ async function upsertTaskRow(pool: any, task: Task) {
        tree_id = EXCLUDED.tree_id,
        error = EXCLUDED.error,
        updated_at = EXCLUDED.updated_at,
-       inputs = COALESCE(EXCLUDED.inputs, tasks.inputs)`,
-    [task.id, task.userId, status, progress, stage, message, treeId, error, nowStr, inputs]
+       inputs = COALESCE(EXCLUDED.inputs, tasks.inputs),
+       max_attempts = COALESCE(tasks.max_attempts, EXCLUDED.max_attempts),
+       lease_owner = COALESCE(EXCLUDED.lease_owner, tasks.lease_owner),
+       lease_expires_at = COALESCE(EXCLUDED.lease_expires_at, tasks.lease_expires_at),
+       next_retry_at = COALESCE(EXCLUDED.next_retry_at, tasks.next_retry_at),
+       last_finished_at = COALESCE(EXCLUDED.last_finished_at, tasks.last_finished_at)`,
+    [task.id, task.userId, status, progress, stage, message, treeId, error, nowStr, inputs, maxAttempts, leaseOwner, leaseExpiresAt, nextRetryAt, lastFinishedAt]
   );
 }
 
@@ -381,7 +392,7 @@ async function processTask(taskId: string) {
 export async function runQueuedTask(taskId: string) {
   const pool = getDb();
   const res = await pool.query(
-    'SELECT id, user_id, status, inputs, created_at, updated_at FROM tasks WHERE id = $1',
+    'SELECT id, user_id, status, inputs, attempts, max_attempts, next_retry_at, lease_owner, lease_expires_at FROM tasks WHERE id = $1',
     [taskId]
   );
   if ((res.rows || []).length === 0) return;
@@ -389,12 +400,46 @@ export async function runQueuedTask(taskId: string) {
   const status = String(row.status || '');
   if (status === 'completed' || status === 'failed') return;
 
+  const now = new Date();
+  const nowStr = now.toISOString();
+  const leaseMs = Math.max(10000, parseInt(process.env.TASK_LEASE_MS || '600000'));
+  const leaseExpiresAt = new Date(now.getTime() + leaseMs).toISOString();
+  const instanceId = process.env.INSTANCE_ID || `api_${process.pid}`;
+  const attempts = typeof row.attempts === 'number' ? row.attempts : parseInt(row.attempts || '0');
+  const maxAttempts = row.max_attempts == null ? Math.max(1, parseInt(process.env.TASK_MAX_ATTEMPTS || '3')) : (typeof row.max_attempts === 'number' ? row.max_attempts : parseInt(row.max_attempts || '0'));
+  const nextRetryAt = row.next_retry_at ? String(row.next_retry_at) : null;
+  const leaseExpiresAtDb = row.lease_expires_at ? String(row.lease_expires_at) : null;
+  if (nextRetryAt && nextRetryAt > nowStr) return;
+  if (leaseExpiresAtDb && leaseExpiresAtDb > nowStr) return;
+  if (attempts >= maxAttempts) {
+    await pool.query(`UPDATE tasks SET status = 'failed', error = $1, updated_at = $2 WHERE id = $3`, ['超过最大重试次数', nowStr, taskId]);
+    return;
+  }
+
+  const acquire = await pool.query(
+    `UPDATE tasks
+     SET status = 'in_progress',
+         attempts = COALESCE(attempts, 0) + 1,
+         lease_owner = $1,
+         lease_expires_at = $2,
+         last_started_at = $3,
+         updated_at = $3,
+         error = NULL
+     WHERE id = $4
+       AND status IN ('pending','in_progress')
+       AND (lease_expires_at IS NULL OR lease_expires_at < $3)
+       AND (next_retry_at IS NULL OR next_retry_at <= $3)
+       AND (max_attempts IS NULL OR COALESCE(attempts,0) < max_attempts)`,
+    [instanceId, leaseExpiresAt, nowStr, taskId]
+  );
+  if ((acquire?.rowCount || 0) === 0) return;
+
   const existing = tasks.get(taskId);
   if (!existing) {
     if (!row.inputs) {
       await pool.query(
-        `UPDATE tasks SET status = 'failed', error = $1, updated_at = $2 WHERE id = $3`,
-        ['任务缺少输入，无法执行', new Date().toISOString(), taskId]
+        `UPDATE tasks SET status = 'failed', error = $1, updated_at = $2, lease_owner = NULL, lease_expires_at = NULL WHERE id = $3`,
+        ['任务缺少输入，无法执行', nowStr, taskId]
       );
       return;
     }
@@ -403,8 +448,8 @@ export async function runQueuedTask(taskId: string) {
       inputs = JSON.parse(String(row.inputs));
     } catch {
       await pool.query(
-        `UPDATE tasks SET status = 'failed', error = $1, updated_at = $2 WHERE id = $3`,
-        ['任务输入解析失败，无法执行', new Date().toISOString(), taskId]
+        `UPDATE tasks SET status = 'failed', error = $1, updated_at = $2, lease_owner = NULL, lease_expires_at = NULL WHERE id = $3`,
+        ['任务输入解析失败，无法执行', nowStr, taskId]
       );
       return;
     }
@@ -419,7 +464,27 @@ export async function runQueuedTask(taskId: string) {
     tasks.set(taskId, task);
   }
 
-  await processTask(taskId);
+  try {
+    await processTask(taskId);
+  } catch (e) {
+    const attemptNo = attempts + 1;
+    const baseDelay = 5000;
+    const delayMs = Math.min(300000, baseDelay * Math.pow(2, Math.max(0, attemptNo - 1)));
+    const retryAt = new Date(Date.now() + delayMs).toISOString();
+    const willRetry = attemptNo < maxAttempts;
+    await pool.query(
+      `UPDATE tasks
+       SET status = $1,
+           error = $2,
+           next_retry_at = $3,
+           lease_owner = NULL,
+           lease_expires_at = NULL,
+           updated_at = $4
+       WHERE id = $5`,
+      [willRetry ? 'pending' : 'failed', (e as Error).message || '任务执行失败', willRetry ? retryAt : null, nowStr, taskId]
+    );
+    throw e;
+  }
 }
 
 export const treeController = {
@@ -496,7 +561,7 @@ export const treeController = {
 
       const pool = getDb();
       const dbRes = await pool.query(
-        'SELECT id, status, progress, stage, message, tree_id, error, created_at, updated_at FROM tasks WHERE id = $1 AND user_id = $2',
+        'SELECT id, status, progress, stage, message, tree_id, error, created_at, updated_at, attempts, max_attempts, next_retry_at FROM tasks WHERE id = $1 AND user_id = $2',
         [taskId, requesterId]
       );
       if ((dbRes.rows || []).length === 0) {
@@ -510,12 +575,77 @@ export const treeController = {
         progress: typeof row.progress === 'number' ? row.progress : parseInt(row.progress || '0'),
         phase: row.stage ? String(row.stage) : undefined,
         treeId: row.tree_id ? String(row.tree_id) : undefined,
+        attempts: typeof row.attempts === 'number' ? row.attempts : parseInt(row.attempts || '0'),
+        maxAttempts: row.max_attempts == null ? undefined : (typeof row.max_attempts === 'number' ? row.max_attempts : parseInt(row.max_attempts || '0')),
+        nextRetryAt: row.next_retry_at ? String(row.next_retry_at) : undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       });
     } catch (error) {
       logger.error('获取任务状态失败', error);
       res.status(500).json({ error: error instanceof Error ? error.message : '获取任务状态失败' });
+    }
+  },
+
+  async retryTask(req: Request, res: Response) {
+    try {
+      const { taskId } = req.params;
+      const requesterId = (req as any).user?.id || 'default';
+      const pool = getDb();
+      const nowStr = new Date().toISOString();
+
+      const found = await pool.query(
+        'SELECT id, status, inputs, attempts, max_attempts FROM tasks WHERE id = $1 AND user_id = $2',
+        [taskId, requesterId]
+      );
+      if ((found.rows || []).length === 0) {
+        return res.status(404).json({ error: '任务不存在' });
+      }
+      const row: any = found.rows[0];
+      const status = String(row.status || '');
+      if (status !== 'failed') {
+        return res.status(400).json({ error: '仅失败任务可重试' });
+      }
+      if (!row.inputs) {
+        return res.status(400).json({ error: '任务缺少输入，无法重试' });
+      }
+
+      await pool.query(
+        `UPDATE tasks
+         SET status = 'pending',
+             error = NULL,
+             next_retry_at = NULL,
+             lease_owner = NULL,
+             lease_expires_at = NULL,
+             attempts = 0,
+             updated_at = $1
+         WHERE id = $2 AND user_id = $3`,
+        [nowStr, taskId, requesterId]
+      );
+
+      if (getTaskQueueMode() === 'redis') {
+        const ok = await enqueueTask(taskId);
+        if (!ok) {
+          return res.status(500).json({ error: '入队失败，请稍后重试' });
+        }
+      } else {
+        const parsed = JSON.parse(String(row.inputs));
+        const task: Task = {
+          id: taskId,
+          status: 'pending',
+          inputs: parsed,
+          userId: requesterId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        tasks.set(taskId, task);
+        processTask(taskId).catch((e) => logger.error('任务处理失败', e));
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('重试任务失败', error);
+      res.status(500).json({ error: '重试失败' });
     }
   },
 
