@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { getPool } from '../database';
 import { logger } from '../utils/logger';
 import { errors } from '../middleware/errorHandler';
@@ -23,8 +24,92 @@ function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 
+function isBcryptHash(value: string): boolean {
+  return typeof value === 'string' && value.startsWith('$2');
+}
+
+async function hashPasswordBcrypt(password: string): Promise<string> {
+  const rounds = Math.min(14, Math.max(10, parseInt(process.env.BCRYPT_COST || '12')));
+  return await bcrypt.hash(password, rounds);
+}
+
+async function verifyPasswordHash(storedHash: string, password: string): Promise<{ ok: boolean; upgradeToBcrypt: boolean }> {
+  if (storedHash && isBcryptHash(storedHash)) {
+    return { ok: await bcrypt.compare(password, storedHash), upgradeToBcrypt: false };
+  }
+  return { ok: storedHash === hashPassword(password), upgradeToBcrypt: true };
+}
+
 function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
+}
+
+function sha256Hex(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function encodeSessionToken(rawToken: string): string {
+  return `h1:${sha256Hex(rawToken)}`;
+}
+
+async function findSessionByTokenWithUser(pool: any, token: string): Promise<any | null> {
+  const nowStr = new Date().toISOString();
+  const encoded = encodeSessionToken(token);
+  let res = await pool.query(
+    `SELECT s.*, u.username, u.display_name
+     FROM sessions s
+     JOIN users u ON s.user_id = u.id
+     WHERE s.token = $1 AND s.expires_at > $2`,
+    [encoded, nowStr]
+  );
+  if ((res.rows || []).length > 0) return res.rows[0];
+
+  res = await pool.query(
+    `SELECT s.*, u.username, u.display_name
+     FROM sessions s
+     JOIN users u ON s.user_id = u.id
+     WHERE s.token = $1 AND s.expires_at > $2`,
+    [token, nowStr]
+  );
+  if ((res.rows || []).length === 0) return null;
+
+  const row = res.rows[0];
+  try {
+    await pool.query('UPDATE sessions SET token = $1 WHERE id = $2', [encoded, row.id]);
+    row.token = encoded;
+  } catch {
+  }
+  return row;
+}
+
+async function findSessionByRefreshTokenWithUser(pool: any, refreshToken: string): Promise<any | null> {
+  const nowStr = new Date().toISOString();
+  const encoded = encodeSessionToken(refreshToken);
+  let res = await pool.query(
+    `SELECT s.*, u.username, u.display_name
+     FROM sessions s
+     JOIN users u ON s.user_id = u.id
+     WHERE s.refresh_token = $1 AND s.refresh_expires_at > $2`,
+    [encoded, nowStr]
+  );
+  if ((res.rows || []).length > 0) return res.rows[0];
+
+  res = await pool.query(
+    `SELECT s.*, u.username, u.display_name
+     FROM sessions s
+     JOIN users u ON s.user_id = u.id
+     WHERE s.refresh_token = $1 AND s.refresh_expires_at > $2`,
+    [refreshToken, nowStr]
+  );
+  if ((res.rows || []).length === 0) return null;
+
+  const row = res.rows[0];
+  try {
+    await pool.query('UPDATE sessions SET refresh_token = $1 WHERE id = $2', [encoded, row.id]);
+    row.refresh_token = encoded;
+  } catch {
+  }
+  return row;
 }
 
 function getSessionExpiry(): string {
@@ -183,7 +268,7 @@ export const authController = {
       }
 
       const userId = uuidv4();
-      const passwordHash = hashPassword(password);
+      const passwordHash = await hashPasswordBcrypt(password);
       await pool.query(
         `INSERT INTO users (id, username, password_hash, display_name)
          VALUES ($1, $2, $3, $4)`,
@@ -199,7 +284,7 @@ export const authController = {
       await pool.query(
         `INSERT INTO sessions (id, user_id, token, refresh_token, expires_at, refresh_expires_at)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [sessionId, userId, token, refreshToken, expiresAt, refreshExpiresAt]
+        [sessionId, userId, encodeSessionToken(token), encodeSessionToken(refreshToken), expiresAt, refreshExpiresAt]
       );
 
       logger.info('用户注册成功', { userId, username });
@@ -235,12 +320,26 @@ export const authController = {
       const pool = getPool();
       const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
       const user = userResult.rows[0];
-      if (!user || user.password_hash !== hashPassword(password)) {
+      if (!user) {
+        await recordLoginFailure(clientIp);
+        throw errors.unauthorized('用户名或密码错误');
+      }
+
+      const verification = await verifyPasswordHash(String(user.password_hash || ''), password);
+      if (!verification.ok) {
         await recordLoginFailure(clientIp);
         throw errors.unauthorized('用户名或密码错误');
       }
 
       await recordLoginSuccess(clientIp);
+
+      if (verification.upgradeToBcrypt) {
+        try {
+          const upgraded = await hashPasswordBcrypt(password);
+          await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [upgraded, user.id]);
+        } catch {
+        }
+      }
 
       await pool.query('DELETE FROM sessions WHERE user_id = $1', [user.id]);
 
@@ -253,7 +352,7 @@ export const authController = {
       await pool.query(
         `INSERT INTO sessions (id, user_id, token, refresh_token, expires_at, refresh_expires_at)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [sessionId, user.id, token, refreshToken, expiresAt, refreshExpiresAt]
+        [sessionId, user.id, encodeSessionToken(token), encodeSessionToken(refreshToken), expiresAt, refreshExpiresAt]
       );
 
       logger.info('用户登录成功', { userId: user.id, username });
@@ -284,19 +383,10 @@ export const authController = {
       }
 
       const pool = getPool();
-      const sessionResult = await pool.query(
-        `SELECT s.*, u.username, u.display_name
-         FROM sessions s
-         JOIN users u ON s.user_id = u.id
-         WHERE s.refresh_token = $1 AND s.refresh_expires_at > NOW()`,
-        [refreshToken]
-      );
-
-      if (sessionResult.rows.length === 0) {
+      const oldSession = await findSessionByRefreshTokenWithUser(pool, refreshToken);
+      if (!oldSession) {
         throw errors.unauthorized('刷新令牌无效或已过期');
       }
-
-      const oldSession = sessionResult.rows[0];
 
       const newToken = generateToken();
       const newRefreshToken = generateToken();
@@ -309,7 +399,7 @@ export const authController = {
       await pool.query(
         `INSERT INTO sessions (id, user_id, token, refresh_token, expires_at, refresh_expires_at)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [newSessionId, oldSession.user_id, newToken, newRefreshToken, expiresAt, refreshExpiresAt]
+        [newSessionId, oldSession.user_id, encodeSessionToken(newToken), encodeSessionToken(newRefreshToken), expiresAt, refreshExpiresAt]
       );
 
       logger.info('Token 刷新成功', { userId: oldSession.user_id });
@@ -344,19 +434,10 @@ export const authController = {
 
       const token = authHeader.slice(7);
       const pool = getPool();
-      const sessionResult = await pool.query(
-        `SELECT s.*, u.username, u.display_name
-         FROM sessions s
-         JOIN users u ON s.user_id = u.id
-         WHERE s.token = $1 AND s.expires_at > NOW()`,
-        [token]
-      );
-
-      if (sessionResult.rows.length === 0) {
+      const session = await findSessionByTokenWithUser(pool, token);
+      if (!session) {
         throw errors.unauthorized('登录已过期，请重新登录');
       }
-
-      const session = sessionResult.rows[0];
       const expiresAt = new Date(session.expires_at);
 
       const now = new Date();
@@ -382,7 +463,7 @@ export const authController = {
         await pool.query(
           `INSERT INTO sessions (id, user_id, token, refresh_token, expires_at, refresh_expires_at)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [newSessionId, session.user_id, newToken, newRefreshToken, newExpiresAt, newRefreshExpiresAt]
+          [newSessionId, session.user_id, encodeSessionToken(newToken), encodeSessionToken(newRefreshToken), newExpiresAt, newRefreshExpiresAt]
         );
 
         response.token = newToken;
@@ -410,7 +491,7 @@ export const authController = {
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.slice(7);
         const pool = getPool();
-        await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
+        await pool.query('DELETE FROM sessions WHERE token = $1 OR token = $2', [encodeSessionToken(token), token]);
         logger.info('用户登出成功');
       }
       res.json({ success: true });
@@ -457,8 +538,10 @@ export const authController = {
         throw errors.validation('用户名已存在');
       }
 
-      const userId = tempUserId?.startsWith('temp_') ? tempUserId : uuidv4();
-      const passwordHash = hashPassword(password);
+      const userId = typeof tempUserId === 'string' && (tempUserId.startsWith('guest_') || tempUserId.startsWith('temp_') || tempUserId.startsWith('device_'))
+        ? tempUserId
+        : uuidv4();
+      const passwordHash = await hashPasswordBcrypt(password);
 
       try {
         await pool.query(
@@ -483,7 +566,7 @@ export const authController = {
       await pool.query(
         `INSERT INTO sessions (id, user_id, token, refresh_token, expires_at, refresh_expires_at)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [sessionId, userId, token, refreshToken, expiresAt, refreshExpiresAt]
+        [sessionId, userId, encodeSessionToken(token), encodeSessionToken(refreshToken), expiresAt, refreshExpiresAt]
       );
 
       logger.info('临时用户转换成功', { userId, username });
@@ -535,11 +618,12 @@ export const authController = {
         throw errors.notFound('用户');
       }
 
-      if (user.password_hash !== hashPassword(oldPassword)) {
+      const verification = await verifyPasswordHash(String(user.password_hash || ''), oldPassword);
+      if (!verification.ok) {
         throw errors.unauthorized('旧密码错误');
       }
 
-      const newPasswordHash = hashPassword(newPassword);
+      const newPasswordHash = await hashPasswordBcrypt(newPassword);
       await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newPasswordHash, userId]);
 
       logger.info('密码修改成功', { userId });
@@ -572,10 +656,6 @@ function parseCookieHeader(header: string | undefined): Record<string, string> {
     out[k] = decodeURIComponent(v);
   }
   return out;
-}
-
-function sha256Hex(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 function buildGuestSetCookie(token: string, nodeEnv: string): string {
@@ -643,20 +723,12 @@ export async function optionalAuth(req: Request, res: Response, next: any) {
     }
 
     const token = authHeader.slice(7);
-    const sessionResult = await pool.query(
-      `SELECT s.*, u.username, u.display_name
-       FROM sessions s
-       JOIN users u ON s.user_id = u.id
-       WHERE s.token = $1 AND s.expires_at > NOW()`,
-      [token]
-    );
-
-    if (sessionResult.rows.length === 0) {
+    const session = await findSessionByTokenWithUser(pool, token);
+    if (!session) {
       res.status(401).json({ error: 'SESSION_EXPIRED', message: '登录已过期，请重新登录' });
       return;
     }
 
-    const session = sessionResult.rows[0];
     (req as any).user = {
       id: session.user_id,
       username: session.username,
@@ -687,20 +759,12 @@ export async function requireAuth(req: Request, res: Response, next: Function) {
 
     const token = authHeader.slice(7);
     const pool = getPool();
-    const sessionResult = await pool.query(
-      `SELECT s.*, u.username, u.display_name
-       FROM sessions s
-       JOIN users u ON s.user_id = u.id
-       WHERE s.token = $1 AND s.expires_at > NOW()`,
-      [token]
-    );
-
-    if (sessionResult.rows.length === 0) {
+    const session = await findSessionByTokenWithUser(pool, token);
+    if (!session) {
       res.status(401).json({ error: '登录已过期，请重新登录' });
       return;
     }
 
-    const session = sessionResult.rows[0];
     (req as any).user = {
       id: session.user_id,
       username: session.username,

@@ -76,22 +76,23 @@ export async function registerRoutes(app: express.Express) {
   const { planningRouter } = await import('./routes/planning');
   const { debugRouter } = await import('./routes/debug');
   const { goalsRouter } = await import('./routes/goals');
-  const { optionalAuth } = await import('./controllers/authController');
+  const { optionalAuth, requireAuth } = await import('./controllers/authController');
   const { treeController } = await import('./controllers/treeController');
   const { llmRateLimiter } = await import('./middleware/llmRateLimit');
   const { metricsService } = await import('./middleware/metrics');
 
   const isProduction = process.env.NODE_ENV === 'production';
+  const isProductionLike = isProduction || process.env.NODE_ENV === 'staging';
 
-  if (!isProduction) {
-    app.use('/api/debug', optionalAuth, debugRouter);
+  if (!isProduction && process.env.ENABLE_DEBUG_ROUTES === 'true') {
+    app.use('/api/debug', requireAuth, debugRouter);
   }
 
   app.get('/api/tasks/:taskId', optionalAuth, treeController.getTaskStatus);
   app.post('/api/tasks/:taskId/cancel', optionalAuth, treeController.cancelTask);
 
+  const { rateLimit } = await import('./middleware/security');
   if (isProduction) {
-    const { rateLimit } = await import('./middleware/security');
     app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 30 }), authRouter);
     app.use('/api/careers', rateLimit({ windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, careerRouter);
     app.use('/api/planning', rateLimit({ windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, planningRouter);
@@ -99,12 +100,12 @@ export async function registerRoutes(app: express.Express) {
     app.use('/api/trees/:treeId/chat', rateLimit({ windowMs: 60 * 1000, maxRequests: 30 }), llmRateLimiter, optionalAuth, chatRouter);
     app.use('/api/trees', rateLimit({ windowMs: 60 * 1000, maxRequests: 60 }), optionalAuth, treeRouter);
   } else {
-    app.use('/api/auth', authRouter);
-    app.use('/api/careers', optionalAuth, careerRouter);
-    app.use('/api/planning', optionalAuth, planningRouter);
-    app.use('/api/goals', optionalAuth, goalsRouter);
-    app.use('/api/trees/:treeId/chat', llmRateLimiter, optionalAuth, chatRouter);
-    app.use('/api/trees', optionalAuth, treeRouter);
+    app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 120 }), authRouter);
+    app.use('/api/careers', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, careerRouter);
+    app.use('/api/planning', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, planningRouter);
+    app.use('/api/goals', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, goalsRouter);
+    app.use('/api/trees/:treeId/chat', rateLimit({ windowMs: 60 * 1000, maxRequests: 60 }), llmRateLimiter, optionalAuth, chatRouter);
+    app.use('/api/trees', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, treeRouter);
   }
 
   app.get('/api/health', async (_req, res) => {
@@ -121,7 +122,12 @@ export async function registerRoutes(app: express.Express) {
     }
   });
 
-  app.get('/api/metrics', async (_req, res) => {
+  const metricsMiddlewares: any[] = [];
+  if (isProductionLike && process.env.PUBLIC_METRICS !== 'true') {
+    metricsMiddlewares.push(requireAuth);
+  }
+
+  app.get('/api/metrics', ...metricsMiddlewares, async (_req, res) => {
     try {
       const snapshot = await metricsService.getSnapshot();
       const llmStats = await metricsService.getLlmStats();

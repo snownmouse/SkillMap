@@ -47,6 +47,10 @@ function sha256Hex(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
+function encodeSessionToken(rawToken: string): string {
+  return `h1:${sha256Hex(rawToken)}`;
+}
+
 function getAllowedOrigins(): string[] {
   const raw = (process.env.CORS_ORIGIN || '').trim();
   if (!raw) return [];
@@ -292,18 +296,35 @@ function handleMessage(clientId: string, message: any) {
           }
 
           const pool = getPool();
-          const result = await pool.query(
-            `SELECT s.user_id FROM sessions s
-             WHERE s.token = $1 AND s.expires_at > NOW()`,
-            [token]
+          const nowStr = new Date().toISOString();
+          const encoded = encodeSessionToken(token);
+          let result = await pool.query(
+            `SELECT s.id, s.user_id FROM sessions s
+             WHERE s.token = $1 AND s.expires_at > $2`,
+            [encoded, nowStr]
           );
 
-          if (result.rows.length > 0) {
+          if ((result.rows || []).length === 0) {
+            result = await pool.query(
+              `SELECT s.id, s.user_id FROM sessions s
+               WHERE s.token = $1 AND s.expires_at > $2`,
+              [token, nowStr]
+            );
+            if ((result.rows || []).length > 0) {
+              try {
+                await pool.query('UPDATE sessions SET token = $1 WHERE id = $2', [encoded, result.rows[0].id]);
+              } catch {
+              }
+            }
+          }
+
+          if ((result.rows || []).length > 0) {
             client.userId = result.rows[0].user_id;
             logger.info('WebSocket 认证成功', { clientId, userId: result.rows[0].user_id });
-          } else {
-            logger.warn('WebSocket 认证失败：无效 token', { clientId });
+            return;
           }
+
+          logger.warn('WebSocket 认证失败：无效 token', { clientId });
         } catch (e) {
           logger.warn('WebSocket 认证失败', { 
             clientId, 
