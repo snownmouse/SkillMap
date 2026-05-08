@@ -22,11 +22,17 @@ const GeneratePage: React.FC = () => {
   const [phase, setPhase] = useState('正在准备...');
   const [preview, setPreview] = useState('');
   const [canRetry, setCanRetry] = useState(false);
+  const [attempts, setAttempts] = useState<number | null>(null);
+  const [maxAttempts, setMaxAttempts] = useState<number | null>(null);
+  const [nextRetryAt, setNextRetryAt] = useState<string | null>(null);
 
   useTaskWebSocket(taskId, async (update) => {
     if (update.progress !== undefined) setProgress(update.progress);
     if (update.phase) setPhase(update.phase);
     if (update.preview) setPreview(update.preview);
+    if (update.attempts !== undefined) setAttempts(update.attempts);
+    if (update.maxAttempts !== undefined) setMaxAttempts(update.maxAttempts);
+    if (update.nextRetryAt) setNextRetryAt(update.nextRetryAt);
 
     if (update.status === 'skeleton_ready' && update.treeId) {
       setGenerating(false);
@@ -81,6 +87,9 @@ const GeneratePage: React.FC = () => {
           setError(status.error || '生成失败，请稍后重试');
           setGenerating(false);
           setCanRetry(true);
+          setAttempts(status.attempts ?? null);
+          setMaxAttempts(status.maxAttempts ?? null);
+          setNextRetryAt(status.nextRetryAt ?? null);
           break;
         case 'pending':
         case 'in_progress':
@@ -94,6 +103,9 @@ const GeneratePage: React.FC = () => {
           if (status.progress !== undefined) setProgress(status.progress);
           if (status.phase) setPhase(status.phase);
           if (status.preview) setPreview(status.preview);
+          setAttempts(status.attempts ?? null);
+          setMaxAttempts(status.maxAttempts ?? null);
+          setNextRetryAt(status.nextRetryAt ?? null);
           setTimeout(() => pollTaskStatus(id, startedAt, 0), POLL_INTERVAL_MS);
           break;
         default:
@@ -119,6 +131,9 @@ const GeneratePage: React.FC = () => {
     setGenerating(true);
     setError(null);
     setCanRetry(false);
+    setAttempts(null);
+    setMaxAttempts(null);
+    setNextRetryAt(null);
     setProgress(5);
     setPhase('正在准备...');
     pollTaskStatus(pendingTask.taskId, new Date(pendingTask.createdAt).getTime());
@@ -128,6 +143,9 @@ const GeneratePage: React.FC = () => {
     setGenerating(true);
     setError(null);
     setCanRetry(false);
+    setAttempts(null);
+    setMaxAttempts(null);
+    setNextRetryAt(null);
     setCareer(input.career);
     setProgress(5);
     setPhase('正在准备...');
@@ -196,6 +214,13 @@ const GeneratePage: React.FC = () => {
             <div className="mx-auto mb-6 w-full max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {error}
               {taskId && <span className="ml-2 text-red-300/80">任务 ID: {taskId}</span>}
+              {(attempts !== null || maxAttempts !== null || nextRetryAt) && (
+                <div className="mt-2 text-xs text-red-200/80">
+                  {attempts !== null && <span>已尝试 {attempts}</span>}
+                  {maxAttempts !== null && <span>{attempts !== null ? ` / ${maxAttempts}` : `最大重试 ${maxAttempts}`}</span>}
+                  {nextRetryAt && <span className="ml-2">下次自动重试：{new Date(nextRetryAt).toLocaleString()}</span>}
+                </div>
+              )}
               {canRetry && taskId && (
                 <div className="mt-3 flex items-center gap-2">
                   <button

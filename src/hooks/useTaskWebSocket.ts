@@ -10,6 +10,9 @@ export interface TaskUpdate {
   preview?: string;
   treeId?: string;
   error?: string;
+  attempts?: number;
+  maxAttempts?: number;
+  nextRetryAt?: string;
   nodeId?: string;
   nodeData?: any;
 }
@@ -44,4 +47,3 @@ export function useTaskWebSocket(
     };
   }, [taskId, isConnected, subscribeTask, unsubscribeTask]);
 }
-

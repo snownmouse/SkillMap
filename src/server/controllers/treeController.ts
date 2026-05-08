@@ -544,6 +544,9 @@ export const treeController = {
         if (task.userId !== requesterId) {
           return res.status(404).json({ error: '任务不存在' });
         }
+        const pool = getDb();
+        const metaRes = await pool.query('SELECT attempts, max_attempts, next_retry_at FROM tasks WHERE id = $1 AND user_id = $2', [taskId, requesterId]);
+        const meta: any = metaRes.rows?.[0] || {};
         res.json({
           taskId: task.id,
           status: task.status,
@@ -553,6 +556,9 @@ export const treeController = {
           phase: task.phase,
           preview: task.preview,
           treeId: task.treeId,
+          attempts: meta.attempts == null ? undefined : (typeof meta.attempts === 'number' ? meta.attempts : parseInt(meta.attempts || '0')),
+          maxAttempts: meta.max_attempts == null ? undefined : (typeof meta.max_attempts === 'number' ? meta.max_attempts : parseInt(meta.max_attempts || '0')),
+          nextRetryAt: meta.next_retry_at ? String(meta.next_retry_at) : undefined,
           createdAt: task.createdAt,
           updatedAt: task.updatedAt
         });
