@@ -93,19 +93,19 @@ export async function registerRoutes(app: express.Express) {
 
   const { rateLimit } = await import('./middleware/security');
   if (isProduction) {
-    app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 30 }), authRouter);
-    app.use('/api/careers', rateLimit({ windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, careerRouter);
-    app.use('/api/planning', rateLimit({ windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, planningRouter);
-    app.use('/api/goals', rateLimit({ windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, goalsRouter);
-    app.use('/api/trees/:treeId/chat', rateLimit({ windowMs: 60 * 1000, maxRequests: 30 }), llmRateLimiter, optionalAuth, chatRouter);
-    app.use('/api/trees', rateLimit({ windowMs: 60 * 1000, maxRequests: 60 }), optionalAuth, treeRouter);
+    app.use('/api/auth', rateLimit({ prefix: 'auth', windowMs: 15 * 60 * 1000, maxRequests: 30 }), authRouter);
+    app.use('/api/careers', rateLimit({ prefix: 'careers', windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, careerRouter);
+    app.use('/api/planning', rateLimit({ prefix: 'planning', windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, planningRouter);
+    app.use('/api/goals', rateLimit({ prefix: 'goals', windowMs: 60 * 1000, maxRequests: 20 }), optionalAuth, goalsRouter);
+    app.use('/api/trees/:treeId/chat', rateLimit({ prefix: 'chat', windowMs: 60 * 1000, maxRequests: 30 }), llmRateLimiter, optionalAuth, chatRouter);
+    app.use('/api/trees', rateLimit({ prefix: 'trees', windowMs: 60 * 1000, maxRequests: 60 }), optionalAuth, treeRouter);
   } else {
-    app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 120 }), authRouter);
-    app.use('/api/careers', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, careerRouter);
-    app.use('/api/planning', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, planningRouter);
-    app.use('/api/goals', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, goalsRouter);
-    app.use('/api/trees/:treeId/chat', rateLimit({ windowMs: 60 * 1000, maxRequests: 60 }), llmRateLimiter, optionalAuth, chatRouter);
-    app.use('/api/trees', rateLimit({ windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, treeRouter);
+    app.use('/api/auth', rateLimit({ prefix: 'auth', windowMs: 15 * 60 * 1000, maxRequests: 120 }), authRouter);
+    app.use('/api/careers', rateLimit({ prefix: 'careers', windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, careerRouter);
+    app.use('/api/planning', rateLimit({ prefix: 'planning', windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, planningRouter);
+    app.use('/api/goals', rateLimit({ prefix: 'goals', windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, goalsRouter);
+    app.use('/api/trees/:treeId/chat', rateLimit({ prefix: 'chat', windowMs: 60 * 1000, maxRequests: 60 }), llmRateLimiter, optionalAuth, chatRouter);
+    app.use('/api/trees', rateLimit({ prefix: 'trees', windowMs: 60 * 1000, maxRequests: 120 }), optionalAuth, treeRouter);
   }
 
   app.get('/api/health', async (_req, res) => {

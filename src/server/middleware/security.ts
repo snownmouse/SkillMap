@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { rateLimitIncr } from '../services/RedisService';
 
 interface RateLimitEntry {
   count: number;
@@ -12,6 +13,7 @@ interface RateLimitOptions {
   maxRequests: number;
   message?: string;
   keyGenerator?: (req: Request) => string;
+  prefix?: string;
 }
 
 export function rateLimit(options: RateLimitOptions) {
@@ -20,36 +22,60 @@ export function rateLimit(options: RateLimitOptions) {
     maxRequests = 100,
     message = '请求过于频繁，请稍后再试',
     keyGenerator = (req) => req.ip || req.socket.remoteAddress || 'unknown',
+    prefix = 'global',
   } = options;
 
   return (req: Request, res: Response, next: NextFunction) => {
     const key = keyGenerator(req);
     const now = Date.now();
+    const redisKey = `ratelimit:${prefix}:${key}`;
+    const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
 
-    const entry = rateLimitStore.get(key);
+    const applyLocal = () => {
+      const entry = rateLimitStore.get(key);
 
-    if (!entry || now > entry.resetTime) {
-      rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+      if (!entry || now > entry.resetTime) {
+        rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+        res.setHeader('X-RateLimit-Limit', maxRequests);
+        res.setHeader('X-RateLimit-Remaining', maxRequests - 1);
+        res.setHeader('X-RateLimit-Reset', new Date(now + windowMs).toISOString());
+        return next();
+      }
+
+      entry.count++;
+
+      const remaining = Math.max(0, maxRequests - entry.count);
       res.setHeader('X-RateLimit-Limit', maxRequests);
-      res.setHeader('X-RateLimit-Remaining', maxRequests - 1);
+      res.setHeader('X-RateLimit-Remaining', remaining);
+      res.setHeader('X-RateLimit-Reset', new Date(entry.resetTime).toISOString());
+
+      if (entry.count > maxRequests) {
+        res.setHeader('Retry-After', Math.ceil((entry.resetTime - now) / 1000));
+        res.status(429).json({ error: message });
+        return;
+      }
+
+      next();
+    };
+
+    rateLimitIncr(redisKey, windowSeconds).then((count) => {
+      if (count === null) {
+        applyLocal();
+        return;
+      }
+      const remaining = Math.max(0, maxRequests - count);
+      res.setHeader('X-RateLimit-Limit', maxRequests);
+      res.setHeader('X-RateLimit-Remaining', remaining);
       res.setHeader('X-RateLimit-Reset', new Date(now + windowMs).toISOString());
-      return next();
-    }
-
-    entry.count++;
-
-    const remaining = Math.max(0, maxRequests - entry.count);
-    res.setHeader('X-RateLimit-Limit', maxRequests);
-    res.setHeader('X-RateLimit-Remaining', remaining);
-    res.setHeader('X-RateLimit-Reset', new Date(entry.resetTime).toISOString());
-
-    if (entry.count > maxRequests) {
-      res.setHeader('Retry-After', Math.ceil((entry.resetTime - now) / 1000));
-      res.status(429).json({ error: message });
-      return;
-    }
-
-    next();
+      if (count > maxRequests) {
+        res.setHeader('Retry-After', windowSeconds);
+        res.status(429).json({ error: message });
+        return;
+      }
+      next();
+    }).catch(() => {
+      applyLocal();
+    });
   };
 }
 

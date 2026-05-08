@@ -74,3 +74,16 @@ export async function cacheIncr(key: string, ttlSeconds: number): Promise<void> 
   }
 }
 
+export async function rateLimitIncr(key: string, ttlSeconds: number): Promise<number | null> {
+  const c = await getClient();
+  if (!c) return null;
+  try {
+    const n = await c.incr(key);
+    if (n === 1 && ttlSeconds > 0) {
+      await c.expire(key, ttlSeconds);
+    }
+    return n;
+  } catch {
+    return null;
+  }
+}
