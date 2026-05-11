@@ -106,7 +106,7 @@ export const difyApi = {
     return response.json();
   },
 
-  async getPlanningPaths(inputs: UserInput): Promise<PlanningPathsResponseData> {
+  async getPlanningPaths(inputs: UserInput, signal?: AbortSignal): Promise<PlanningPathsResponseData> {
     const payload = {
       major: inputs.major,
       career: inputs.career,
@@ -122,6 +122,7 @@ export const difyApi = {
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
       body: JSON.stringify(payload),
       credentials: 'include',
+      signal,
     });
 
     if (!response.ok) {

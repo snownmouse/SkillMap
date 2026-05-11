@@ -4,7 +4,6 @@ import { getPlanningPathsPrompt } from '../prompts/planningPaths';
 import type { GenerateTreeRequest } from '../../types/backend';
 import type { PlanPath, PlanPathOption, PlanStage } from '../../types/skillTree';
 import { logger } from '../utils/logger';
-import { errors } from '../middleware/errorHandler';
 
 interface PlanningPathsResponseData {
   longTermGoal: string;
@@ -14,14 +13,51 @@ interface PlanningPathsResponseData {
   recommendedReason?: string;
 }
 
-function isPlanPath(value: unknown): value is PlanPath {
-  return value === 'tech' ||
-    value === 'management' ||
-    value === 'slash' ||
-    value === 'grassroot' ||
-    value === 'national_strategy' ||
-    value === 'startup' ||
-    value === 'stable';
+const VALID_PATH_IDS: PlanPath[] = ['tech', 'management', 'slash', 'grassroot', 'national_strategy', 'startup', 'stable'];
+
+const PATH_ID_ALIASES: Record<string, PlanPath> = {
+  'technology': 'tech',
+  'technical': 'tech',
+  'tech_deep': 'tech',
+  'tech_specialist': 'tech',
+  'mgr': 'management',
+  'manager': 'management',
+  'leader': 'management',
+  'leadership': 'management',
+  'hybrid': 'slash',
+  'cross': 'slash',
+  'cross_domain': 'slash',
+  'interdisciplinary': 'slash',
+  'composite': 'slash',
+  'grassroots': 'grassroot',
+  'grass_root': 'grassroot',
+  'community': 'grassroot',
+  'rural': 'grassroot',
+  'national': 'national_strategy',
+  'nation': 'national_strategy',
+  'strategy': 'national_strategy',
+  'country': 'national_strategy',
+  'innovation': 'startup',
+  'entrepreneurship': 'startup',
+  'entrepreneur': 'startup',
+  'venture': 'startup',
+  'stability': 'stable',
+  'steady': 'stable',
+  'conservative': 'stable',
+  'civil_service': 'stable',
+  'public_service': 'stable',
+};
+
+function resolvePathId(raw: unknown): PlanPath | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const normalized = raw.trim().toLowerCase().replace(/[-\s]/g, '_');
+  if (VALID_PATH_IDS.includes(normalized as PlanPath)) return normalized as PlanPath;
+  const alias = PATH_ID_ALIASES[normalized];
+  if (alias) return alias;
+  for (const validId of VALID_PATH_IDS) {
+    if (normalized.includes(validId) || validId.includes(normalized)) return validId;
+  }
+  return null;
 }
 
 function normalizeString(value: unknown): string | undefined {
@@ -54,8 +90,8 @@ function normalizeStage(value: any): PlanStage | null {
 }
 
 function normalizePath(value: any): PlanPathOption | null {
-  const id = value?.id;
-  if (!isPlanPath(id)) return null;
+  const resolvedId = resolvePathId(value?.id);
+  if (!resolvedId) return null;
   const name = normalizeString(value?.name);
   const description = normalizeString(value?.description);
   if (!name || !description) return null;
@@ -84,7 +120,7 @@ function normalizePath(value: any): PlanPathOption | null {
     : undefined;
 
   return {
-    id,
+    id: resolvedId,
     name,
     description,
     ...(typeof fitScore === 'number' ? { fitScore } : {}),
@@ -101,22 +137,20 @@ function normalizePlanningResponse(raw: any): PlanningPathsResponseData {
   const pathsRaw = Array.isArray(raw?.paths) ? raw.paths : [];
   const paths = pathsRaw.map(normalizePath).filter(Boolean) as PlanPathOption[];
 
-  const recommendedPathId = isPlanPath(raw?.recommendedPathId ?? raw?.recommended_path_id)
-    ? (raw.recommendedPathId ?? raw.recommended_path_id)
-    : undefined;
-  const recommendedReason = normalizeString(raw?.recommendedReason ?? raw?.recommended_reason);
+  const seenIds = new Set<PlanPath>();
+  const uniquePaths = paths.filter(p => {
+    if (seenIds.has(p.id)) return false;
+    seenIds.add(p.id);
+    return true;
+  });
 
-  if (stages.length < 2 || stages.length > 5) {
-    throw errors.internal('AI 返回的阶段拆分不正确');
-  }
-  if (paths.length < 3 || paths.length > 5) {
-    throw errors.internal('AI 返回的路径数量不正确');
-  }
+  const recommendedPathId = resolvePathId(raw?.recommendedPathId ?? raw?.recommended_path_id);
+  const recommendedReason = normalizeString(raw?.recommendedReason ?? raw?.recommended_reason);
 
   return {
     longTermGoal,
     stages,
-    paths,
+    paths: uniquePaths,
     ...(recommendedPathId ? { recommendedPathId } : {}),
     ...(recommendedReason ? { recommendedReason } : {})
   };
@@ -127,14 +161,39 @@ export const planningController = {
     try {
       const inputs: GenerateTreeRequest = req.body;
       if (!inputs.major || !inputs.career) {
-        throw errors.validation('专业和目标职业是必填项');
+        return res.status(400).json({ error: '专业和目标职业是必填项' });
       }
 
       logger.info('开始生成阶段拆分与路径候选', { career: inputs.career });
 
-      const { system, user } = getPlanningPathsPrompt(inputs);
-      const raw = await llmService.chatJSON(system, user);
-      const data = normalizePlanningResponse(raw);
+      let data: PlanningPathsResponseData | null = null;
+      let lastError: Error | null = null;
+      const maxAttempts = 2;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const { system, user } = getPlanningPathsPrompt(inputs);
+          const raw = await llmService.chatJSON(system, user);
+          logger.info('规划路径API返回原始数据', { attempt, rawType: typeof raw, hasPaths: Array.isArray(raw?.paths), hasStages: Array.isArray(raw?.stages) });
+          const normalized = normalizePlanningResponse(raw);
+
+          if (normalized.stages.length >= 2 && normalized.paths.length >= 2) {
+            data = normalized;
+            break;
+          }
+
+          lastError = new Error(`AI返回数据不完整：${normalized.stages.length}个阶段, ${normalized.paths.length}条路径（需要至少2个阶段和2条路径）`);
+          logger.warn('规划路径数据不完整，准备重试', { attempt, stages: normalized.stages.length, paths: normalized.paths.length });
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+          logger.warn('规划路径调用失败', { attempt, error: lastError.message });
+        }
+      }
+
+      if (!data) {
+        logger.error('生成阶段拆分与路径候选最终失败', { error: lastError?.message });
+        return res.status(500).json({ error: lastError?.message || '生成路径建议失败，请稍后重试' });
+      }
 
       res.json({
         success: true,
@@ -145,14 +204,8 @@ export const planningController = {
         }
       });
     } catch (error) {
-      if ((error as any).code) {
-        const appError = error as any;
-        res.status(appError.statusCode).json({ error: appError.userMessage });
-        return;
-      }
-      logger.error('生成阶段拆分与路径候选失败', error);
-      res.status(500).json({ error: '生成阶段拆分与路径候选失败，请稍后重试' });
+      logger.error('生成阶段拆分与路径候选异常', error);
+      res.status(500).json({ error: '生成路径建议失败，请稍后重试' });
     }
   }
 };
-

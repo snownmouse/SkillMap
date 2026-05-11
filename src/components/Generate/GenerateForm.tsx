@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlanMeta, PlanPath, UserInput } from '../../types/skillTree';
-import { ChevronRight, ChevronLeft, Sparkles, Target, BookOpen, Clock, MessageSquare } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Sparkles, Target, BookOpen, Clock, MessageSquare, Compass, Route, Zap, SkipForward } from 'lucide-react';
 import { difyApi, PlanningPathsResponseData } from '../../services/difyApi';
 
 interface GenerateFormProps {
@@ -31,9 +31,8 @@ const TIME_PRESETS = [
   { label: '全职冲刺', hours: 50 },
 ];
 
-/**
- * 技能树生成表单（分步优化版）
- */
+const TOTAL_STEPS = 4;
+
 const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<UserInput>({
@@ -94,15 +93,22 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
     setPlanningError(null);
     setPlanningLoading(true);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
       const result = await difyApi.getPlanningPaths({
         ...formData,
         longTermGoal: longTermGoal || formData.career,
-      });
+      }, controller.signal);
+      clearTimeout(timeoutId);
       setPlanning(result);
       const initialSelected = (result.recommendedPathId || result.paths?.[0]?.id || '') as PlanPath | '';
       setSelectedPathId(initialSelected);
     } catch (e) {
-      setPlanningError(e instanceof Error ? e.message : '生成路径建议失败');
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        setPlanningError('请求超时，请稍后重试');
+      } else {
+        setPlanningError(e instanceof Error ? e.message : '生成路径建议失败');
+      }
       setPlanning(null);
       setSelectedPathId('');
     } finally {
@@ -110,22 +116,24 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
 
+  const handleSubmit = () => {
+    onSubmit({ ...formData, longTermGoal: longTermGoal || formData.career, planMeta: getPlanMeta() });
+  };
+
   return (
     <div className="panel-card relative mx-auto max-w-2xl overflow-hidden rounded-[30px] p-8">
-      {/* 装饰背景 */}
       <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-skill-core/10 blur-3xl" />
       <div className="absolute -bottom-20 left-0 h-40 w-40 rounded-full bg-skill-general/10 blur-3xl" />
-      
-      {/* 进度指示器 */}
+
       <div className="flex justify-between mb-10 relative z-10">
-        {[1, 2, 3].map(i => (
+        {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(i => (
           <div key={i} className="flex items-center flex-1 last:flex-none">
             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold transition-all duration-500 ${
               step >= i ? 'bg-skill-core text-white shadow-lg shadow-skill-core/20' : 'bg-app-surface text-app-muted border border-[rgba(214,176,165,0.4)]'
             }`}>
               {i}
             </div>
-            {i < 3 && (
+            {i < TOTAL_STEPS && (
               <div className="flex-1 mx-4 h-1 bg-app-surface border border-[rgba(214,176,165,0.2)] rounded-full overflow-hidden">
                 <div className={`h-full bg-skill-core transition-all duration-500 ${step > i ? 'w-full' : 'w-0'}`} />
               </div>
@@ -134,7 +142,6 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
         ))}
       </div>
 
-      {/* Step 1: 职业意向 */}
       {step === 1 && (
         <div className="space-y-8 animate-fade-in relative z-10">
           <div className="space-y-2">
@@ -197,7 +204,6 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
         </div>
       )}
 
-      {/* Step 2: 水平与时间 */}
       {step === 2 && (
         <div className="space-y-8 animate-fade-in relative z-10">
           <div className="space-y-2">
@@ -276,7 +282,6 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
         </div>
       )}
 
-      {/* Step 3: 补充说明 */}
       {step === 3 && (
         <div className="space-y-8 animate-fade-in relative z-10">
           <div className="space-y-2">
@@ -306,71 +311,8 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                 placeholder="例如：成为资深前端架构师；转型为量化研究员；进入重点领域做算法工程师..."
                 className="h-24 w-full resize-none rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-5 text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
               />
-              <div className="mt-3 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleGeneratePlanning}
-                  disabled={planningLoading || !formData.career || !formData.major}
-                  className="btn-secondary rounded-2xl px-4 py-3 font-bold disabled:opacity-50"
-                >
-                  {planningLoading ? '正在生成路线建议...' : '生成阶段与路线建议'}
-                </button>
-                {planningError && (
-                  <div className="text-xs text-red-200">{planningError}</div>
-                )}
-              </div>
             </div>
 
-            {planning && (
-              <div className="space-y-5">
-                <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-4">
-                  <div className="text-sm font-black text-app-text mb-3">阶段拆分（先走第 1 阶段）</div>
-                  <div className="space-y-3">
-                    {planning.stages.map((s) => (
-                      <div key={s.id} className="rounded-xl border border-[rgba(214,176,165,0.25)] bg-white/40 p-3">
-                        <div className="font-bold text-app-text">{s.title}</div>
-                        <div className="text-xs text-app-muted mt-1">{s.objective}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-4">
-                  <div className="text-sm font-black text-app-text mb-3">请选择你的路线（3-5 条）</div>
-                  <div className="space-y-3">
-                    {planning.paths.map((p) => {
-                      const active = selectedPathId === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setSelectedPathId(p.id)}
-                          className={`w-full text-left rounded-2xl border-2 p-4 transition-all ${
-                            active
-                              ? 'bg-[rgba(255,250,240,0.9)] border-skill-core shadow-md shadow-skill-core/10'
-                              : 'bg-[rgba(255,250,240,0.6)] border-[rgba(214,176,165,0.3)] hover:border-skill-core/50 hover:bg-[rgba(255,250,240,0.8)]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className={`font-bold ${active ? 'text-skill-core' : 'text-app-text'}`}>{p.name}</div>
-                            {typeof p.fitScore === 'number' && (
-                              <div className="text-xs font-black text-app-muted">{p.fitScore}</div>
-                            )}
-                          </div>
-                          <div className="text-xs text-app-muted mt-1.5">{p.description}</div>
-                          {p.stageRoadmap?.[0]?.route?.length ? (
-                            <div className="text-[11px] text-app-muted mt-2">
-                              第 1 阶段顺序：{p.stageRoadmap[0].route.join(' → ')}
-                            </div>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-            
             <div>
               <label className="block text-sm font-bold text-app-muted mb-3">已掌握技能 (按回车添加)</label>
               <div className="relative">
@@ -403,23 +345,194 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
               <ChevronLeft size={20} />
               返回
             </button>
-            <button 
-              onClick={() => onSubmit({ ...formData, longTermGoal: longTermGoal || formData.career, planMeta: getPlanMeta() })}
-              disabled={isLoading || (planning ? !getPlanMeta()?.selectedPathId : false)}
-              className="btn-primary flex flex-[3] items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border-2 border-app-border border-t-white rounded-full animate-spin" />
-                  正在构建图谱...
-                </div>
-              ) : (
-                <>
-                  <Sparkles size={20} />
-                  {planning ? '生成第 1 阶段技能树' : '开启我的进化之路'}
-                </>
-              )}
+            <button onClick={handleNext} className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all">
+              下一步
+              <ChevronRight size={20} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-8 animate-fade-in relative z-10">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-black text-app-text flex items-center gap-3">
+              <Compass className="text-skill-core" />
+              规划你的路线
+            </h2>
+            <p className="text-app-muted">基于你填写的信息，AI 可以为你分析阶段拆分和路线选择</p>
+          </div>
+
+          {!planning && !planningLoading && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-6 space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-skill-core/10 flex items-center justify-center flex-shrink-0">
+                    <Route className="text-skill-core" size={24} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-app-text text-lg">生成路线建议</div>
+                    <div className="text-sm text-app-muted mt-1 leading-relaxed">
+                      AI 将根据你的背景和目标，为你拆分学习阶段（2-5个），并提供 3-5 条可选发展路线。
+                      选择路线后，技能树将聚焦于第一阶段的目标。
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="rounded-xl bg-white/50 p-3 text-center">
+                    <div className="text-xs text-app-muted">目标职业</div>
+                    <div className="font-bold text-app-text mt-1">{formData.career}</div>
+                  </div>
+                  <div className="rounded-xl bg-white/50 p-3 text-center">
+                    <div className="text-xs text-app-muted">长期目标</div>
+                    <div className="font-bold text-app-text mt-1">{longTermGoal || formData.career}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={handleGeneratePlanning}
+                  disabled={!formData.career || !formData.major}
+                  className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50"
+                >
+                  <Zap size={20} />
+                  生成路线建议
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all disabled:opacity-50"
+                >
+                  <SkipForward size={20} />
+                  跳过，直接生成
+                </button>
+              </div>
+
+              {planningError && (
+                <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 text-sm text-red-600">
+                  {planningError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {planningLoading && (
+            <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-8 text-center space-y-4">
+              <div className="w-12 h-12 border-3 border-skill-core/30 border-t-skill-core rounded-full animate-spin mx-auto" />
+              <div className="font-bold text-app-text">正在分析你的职业路线...</div>
+              <div className="text-sm text-app-muted">AI 正在根据你的背景拆分阶段、推荐路线</div>
+            </div>
+          )}
+
+          {planning && (
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-4">
+                <div className="text-sm font-black text-app-text mb-3">阶段拆分（先走第 1 阶段）</div>
+                <div className="space-y-3">
+                  {planning.stages.map((s, idx) => (
+                    <div key={s.id} className="rounded-xl border border-[rgba(214,176,165,0.25)] bg-white/40 p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-skill-core/10 text-skill-core text-xs font-bold flex items-center justify-center">{idx + 1}</span>
+                        <span className="font-bold text-app-text">{s.title}</span>
+                        {s.suggestedMonths && <span className="text-xs text-app-muted ml-auto">{s.suggestedMonths}个月</span>}
+                      </div>
+                      <div className="text-xs text-app-muted mt-1 ml-8">{s.objective}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-4">
+                <div className="text-sm font-black text-app-text mb-3">请选择你的路线</div>
+                <div className="space-y-3">
+                  {planning.paths.map((p) => {
+                    const active = selectedPathId === p.id;
+                    const isRecommended = p.id === planning.recommendedPathId;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedPathId(p.id)}
+                        className={`w-full text-left rounded-2xl border-2 p-4 transition-all ${
+                          active
+                            ? 'bg-[rgba(255,250,240,0.9)] border-skill-core shadow-md shadow-skill-core/10'
+                            : 'bg-[rgba(255,250,240,0.6)] border-[rgba(214,176,165,0.3)] hover:border-skill-core/50 hover:bg-[rgba(255,250,240,0.8)]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className={`font-bold ${active ? 'text-skill-core' : 'text-app-text'}`}>
+                            {p.name}
+                            {isRecommended && <span className="ml-2 text-[10px] bg-skill-core/10 text-skill-core px-2 py-0.5 rounded-full font-bold">推荐</span>}
+                          </div>
+                          {typeof p.fitScore === 'number' && (
+                            <div className="text-xs font-black text-app-muted">匹配度 {p.fitScore}%</div>
+                          )}
+                        </div>
+                        <div className="text-xs text-app-muted mt-1.5">{p.description}</div>
+                        {p.fitReason && <div className="text-[11px] text-skill-core/70 mt-1">{p.fitReason}</div>}
+                        {p.stageRoadmap?.[0]?.route?.length ? (
+                          <div className="text-[11px] text-app-muted mt-2">
+                            第 1 阶段顺序：{p.stageRoadmap[0].route.join(' → ')}
+                          </div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                onClick={() => { setPlanning(null); setSelectedPathId(''); setPlanningError(null); }}
+                className="text-xs text-app-muted hover:text-app-text transition-colors underline underline-offset-2"
+              >
+                重新生成路线建议
+              </button>
+            </div>
+          )}
+
+          <div className="flex space-x-4">
+            <button onClick={handlePrev} className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all">
+              <ChevronLeft size={20} />
+              返回
+            </button>
+            {planning ? (
+              <button 
+                onClick={handleSubmit}
+                disabled={isLoading || !getPlanMeta()?.selectedPathId}
+                className="btn-primary flex flex-[3] items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-app-border border-t-white rounded-full animate-spin" />
+                    正在构建图谱...
+                  </div>
+                ) : (
+                  <>
+                    <Sparkles size={20} />
+                    生成第 1 阶段技能树
+                  </>
+                )}
+              </button>
+            ) : !planningLoading ? (
+              <button 
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="btn-primary flex flex-[3] items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-app-border border-t-white rounded-full animate-spin" />
+                    正在构建图谱...
+                  </div>
+                ) : (
+                  <>
+                    <Sparkles size={20} />
+                    开启我的进化之路
+                  </>
+                )}
+              </button>
+            ) : null}
           </div>
         </div>
       )}
