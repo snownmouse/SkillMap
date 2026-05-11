@@ -25,23 +25,43 @@ SkillMap 是一个前后端一体化的 AI 学习规划项目，用来生成技�
 ```text
 .
 ├── server.ts                 # 服务端入口，开发时承载 Vite 中间件
+├── worker.ts                 # 后台工作进程入口
 ├── src/
 │   ├── components/           # 前端组件
-│   ├── context/              # 全局状态
-│   ├── hooks/                # 前端 hooks，包括 WebSocket
+│   │   ├── Assessment/       # 职业测评组件
+│   │   ├── Chat/             # 对话组件
+│   │   ├── Debug/            # 调试面板
+│   │   ├── Generate/         # 生成表单与动画
+│   │   ├── Layout/           # 布局与导航
+│   │   ├── SkillTree/        # 技能树可视化
+│   │   └── Timeline/         # 时间线组件
+│   ├── context/              # 全局状态 (AppContext)
+│   ├── hooks/                # 前端 hooks，包括 WebSocket / 语音
 │   ├── pages/                # 页面入口
 │   ├── server/               # 后端业务
 │   │   ├── controllers/      # 控制器
+│   │   ├── database/         # SQL 构建器
 │   │   ├── llmProviders/     # 模型适配层
-│   │   ├── middleware/       # 安全、限流、监控
+│   │   ├── middleware/       # 安全、限流、监控、追踪
+│   │   ├── migrations/       # 数据库版本迁移
 │   │   ├── prompts/          # 提示词模板
 │   │   ├── repositories/     # 数据访问层
 │   │   ├── routes/           # API 路由
-│   │   └── services/         # 业务服务
+│   │   ├── services/         # 业务服务
+│   │   └── utils/            # 后端工具函数
 │   ├── services/             # 前端 API 封装
 │   ├── types/                # 类型定义
 │   └── utils/                # 通用工具
-├── docs/                     # 运维与测试文档
+├── scripts/
+│   ├── db/                   # 数据库迁移脚本
+│   └── style/                # 样式替换工具脚本
+├── docs/                     # 项目文档（按类别组织）
+│   ├── architecture/         # 架构与设计文档
+│   ├── setup/                # 安装配置文档
+│   ├── api/                  # API 与接口文档
+│   ├── operations/           # 运维与安全文档
+│   ├── CONTRIBUTING.md       # 贡献指南
+│   └── README.md             # 文档导航
 └── tests/                    # 测试脚本
 ```
 
@@ -155,9 +175,17 @@ docker compose up --build
 
 ## 文档
 
-- `docs/BETA_TESTING_GUIDE.md`：当前版本的测试建议
-- `docs/DATABASE_MIGRATION_GUIDE.md`：数据库切换与风险说明
-- `docs/ROLLBACK_GUIDE.md`：回滚预案与验证步骤
+完整文档导航见 [docs/README.md](docs/README.md)，主要文档包括：
+
+- [技术架构文档](docs/architecture/ARCHITECTURE.md)：系统架构、前后端结构、数据模型
+- [构建与部署指南](docs/setup/BUILD_GUIDE.md)：开发/生产环境构建与部署
+- [环境配置指南](docs/setup/ENVIRONMENT_GUIDE.md)：环境变量与 LLM 供应商配置
+- [数据库迁移指南](docs/setup/DATABASE_MIGRATION_GUIDE.md)：SQLite 与 PostgreSQL 切换
+- [API 文档](docs/api/API_GUIDE.md)：RESTful API 接口说明
+- [WebSocket 指南](docs/api/WEBSOCKET_GUIDE.md)：WebSocket 连接与消息协议
+- [安全指南](docs/operations/SECURITY.md)：安全架构与防护机制
+- [回滚指南](docs/operations/ROLLBACK_GUIDE.md)：回滚预案与验证步骤
+- [内测指南](docs/setup/BETA_TESTING_GUIDE.md)：当前版本的测试建议
 
 ## 已知现状
 

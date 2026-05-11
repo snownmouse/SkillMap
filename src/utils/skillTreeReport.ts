@@ -54,6 +54,21 @@ function categoryLabel(category: SkillNode['category']) {
   }
 }
 
+function getStatusIcon(status: SkillNode['status']): string {
+  switch (status) {
+    case 'completed':
+      return '✅';
+    case 'in_progress':
+      return '🔄';
+    case 'available':
+      return '📋';
+    case 'locked':
+      return '🔒';
+    default:
+      return '⬜';
+  }
+}
+
 function renderTagList(items: string[]) {
   if (!items.length) return '<p class="empty">暂无内容</p>';
   return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
@@ -131,6 +146,83 @@ function renderNodeCard(node: SkillNode) {
   `;
 }
 
+interface TreeNode {
+  id: string;
+  data: SkillNode;
+  children: TreeNode[];
+}
+
+function buildTree(nodes: SkillNode[], edges: any[]): TreeNode[] {
+  const nodeMap = new Map<string, TreeNode>();
+
+  nodes.forEach(node => {
+    nodeMap.set(node.id, { id: node.id, data: node, children: [] });
+  });
+
+  const rootNodes: TreeNode[] = [];
+
+  edges.forEach(edge => {
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    if (sourceNode && targetNode) {
+      sourceNode.children.push(targetNode);
+    }
+  });
+
+  nodeMap.forEach(node => {
+    const hasIncoming = edges.some(edge => edge.target === node.id);
+    if (!hasIncoming) {
+      rootNodes.push(node);
+    }
+  });
+
+  if (rootNodes.length === 0 && nodeMap.size > 0) {
+    const firstNode = nodes[0];
+    if (firstNode) {
+      const node = nodeMap.get(firstNode.id);
+      if (node) rootNodes.push(node);
+    }
+  }
+
+  return rootNodes;
+}
+
+function renderTreeNode(treeNode: TreeNode, depth = 0): string {
+  const connector = depth > 0 ? '│   '.repeat(depth - 1) + '├── ' : '';
+  const isRoot = depth === 0;
+
+  let html = `
+    <div class="tree-node ${isRoot ? 'root' : ''}">
+      ${depth > 0 ? `<div class="tree-connector"><span class="connector-line">${connector}</span><span class="connector-icon">${getStatusIcon(treeNode.data.status)}</span></div>` : `<span class="root-icon">${getStatusIcon(treeNode.data.status)}</span>`}
+      <div class="tree-node-content ${isRoot ? 'root-content' : ''}">
+        <div class="tree-node-header">
+          <strong>${escapeHtml(treeNode.data.name)}</strong>
+          <span class="tree-node-meta">${categoryLabel(treeNode.data.category)} · ${difficultyLabel(treeNode.data.difficulty)} · ${treeNode.data.progress || 0}%</span>
+        </div>
+        ${treeNode.data.description ? `<p class="tree-node-desc">${escapeHtml(treeNode.data.description)}</p>` : ''}
+        ${treeNode.data.whyItMatters ? `<p class="tree-node-why"><em>为什么重要：</em>${escapeHtml(treeNode.data.whyItMatters)}</p>` : ''}
+        ${treeNode.data.milestone ? `<p class="tree-node-milestone"><em>阶段目标：</em>${escapeHtml(treeNode.data.milestone)}</p>` : ''}
+        ${treeNode.data.learningObjectives && treeNode.data.learningObjectives.length > 0 ? `
+          <div class="tree-node-objectives">
+            <strong>学习目标：</strong>
+            <ul>${treeNode.data.learningObjectives.map(obj => `<li>${escapeHtml(obj)}</li>`).join('')}</ul>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  if (treeNode.children.length > 0) {
+    html += '<div class="tree-children">';
+    treeNode.children.forEach(child => {
+      html += renderTreeNode(child, depth + 1);
+    });
+    html += '</div>';
+  }
+
+  return html;
+}
+
 export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
   const nodes = Object.values(treeData.nodes || {});
   const unlockedCount = nodes.filter((node) => node.status !== 'locked').length;
@@ -139,6 +231,10 @@ export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
   const averageProgress = nodes.length
     ? Math.round(nodes.reduce((sum, node) => sum + (node.progress || 0), 0) / nodes.length)
     : 0;
+
+  const edges = treeData.edges || [];
+  const rootNodes = buildTree(nodes, edges);
+  const treeViewHtml = rootNodes.map(root => renderTreeNode(root)).join('');
 
   const nodeCards = nodes.map(renderNodeCard).join('');
   const timelineCards = (treeData.timeline || []).slice(0, 12).map((event) => `
@@ -183,7 +279,7 @@ export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
       line-height: 1.65;
     }
     .page {
-      max-width: 1160px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 40px 24px 80px;
     }
@@ -339,11 +435,126 @@ export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
       font-size: 13px;
       text-align: center;
     }
+    
+    /* 树状结构样式 */
+    .tree-view {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+    .tree-view h2 {
+      margin-bottom: 24px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tree-view h2::before {
+      content: '🌲';
+      font-size: 28px;
+    }
+    .tree-node {
+      position: relative;
+      padding: 12px 0;
+    }
+    .tree-node.root {
+      border-left: 3px solid var(--accent);
+      margin-left: 20px;
+      padding-left: 20px;
+    }
+    .tree-node.root .root-content {
+      background: var(--accent-soft);
+      border-radius: 16px;
+      padding: 16px;
+      border: 2px solid var(--accent);
+    }
+    .tree-connector {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .connector-line {
+      color: var(--border);
+    }
+    .root-icon {
+      font-size: 24px;
+      margin-right: 8px;
+    }
+    .connector-icon {
+      font-size: 16px;
+    }
+    .tree-node-content {
+      display: inline-block;
+      vertical-align: top;
+      margin-left: 8px;
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      max-width: 800px;
+    }
+    .tree-node.root .tree-node-content {
+      margin-left: 0;
+      max-width: none;
+    }
+    .tree-node-header {
+      margin-bottom: 8px;
+    }
+    .tree-node-header strong {
+      font-size: 16px;
+      color: var(--text);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .tree-node-meta {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .tree-node-desc {
+      margin: 8px 0;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .tree-node-why, .tree-node-milestone {
+      margin: 6px 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .tree-node-why em, .tree-node-milestone em {
+      color: var(--accent);
+      font-style: normal;
+    }
+    .tree-node-objectives {
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .tree-node-objectives ul {
+      margin: 4px 0 0 0;
+      padding-left: 18px;
+    }
+    .tree-node-objectives li {
+      margin: 2px 0;
+    }
+    .tree-children {
+      margin-left: 32px;
+      border-left: 2px dashed var(--border);
+      padding-left: 16px;
+    }
+    
     @media (max-width: 900px) {
       .two-col { grid-template-columns: 1fr; }
       h1 { font-size: 32px; }
       .page { padding: 24px 14px 56px; }
       .hero, .panel, .node-card { padding: 20px; }
+      .tree-view { padding: 20px; }
+      .tree-children { margin-left: 16px; padding-left: 8px; }
     }
   </style>
 </head>
@@ -363,6 +574,13 @@ export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
       </div>
     </section>
 
+    <section class="tree-view">
+      <h2>技能树结构图</h2>
+      <div class="tree-container">
+        ${treeViewHtml || '<p class="empty">暂无技能树数据</p>'}
+      </div>
+    </section>
+
     <section class="two-col">
       <article class="panel">
         <h2>总体目标</h2>
@@ -376,7 +594,7 @@ export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
 
     <section class="two-col">
       <article class="panel">
-        <h2>技能节点</h2>
+        <h2>技能节点详情</h2>
         <p class="muted">以下内容按当前项目内的技能树结构生成，保留了状态、目标、步骤与资源信息，方便离线查看。</p>
       </article>
       <article class="panel">

@@ -368,6 +368,7 @@ export function notifyTaskUpdate(taskId: string, update: {
   preview?: string;
   nodeId?: string;
   nodeData?: any;
+  nodeCount?: number;
 }) {
   sendTaskUpdateToClients(taskId, update);
   pubsubPublish('skillmap:task_updates', JSON.stringify({

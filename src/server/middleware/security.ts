@@ -31,12 +31,13 @@ export function rateLimit(options: RateLimitOptions) {
     const now = Date.now();
     const redisKey = `ratelimit:${prefix}:${key}`;
     const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+    const localKey = `${prefix}:${key}`;
 
     const applyLocal = () => {
-      const entry = rateLimitStore.get(key);
+      const entry = rateLimitStore.get(localKey);
 
       if (!entry || now > entry.resetTime) {
-        rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+        rateLimitStore.set(localKey, { count: 1, resetTime: now + windowMs });
         res.setHeader('X-RateLimit-Limit', maxRequests);
         res.setHeader('X-RateLimit-Remaining', maxRequests - 1);
         res.setHeader('X-RateLimit-Reset', new Date(now + windowMs).toISOString());

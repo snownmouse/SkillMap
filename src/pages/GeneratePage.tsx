@@ -12,7 +12,7 @@ import { useTaskWebSocket } from '../hooks/useTaskWebSocket';
  */
 const GeneratePage: React.FC = () => {
   const POLL_INTERVAL_MS = 10000;
-  const MAX_POLL_DURATION_MS = 300000;
+  const MAX_POLL_DURATION_MS = 1200000; // 20分钟
   const MAX_NETWORK_FAILURES = 3;
   const navigate = useNavigate();
   const { setSkillTree, setGenerating, isGenerating, error, setError } = useSkillTree();
@@ -25,6 +25,8 @@ const GeneratePage: React.FC = () => {
   const [attempts, setAttempts] = useState<number | null>(null);
   const [maxAttempts, setMaxAttempts] = useState<number | null>(null);
   const [nextRetryAt, setNextRetryAt] = useState<string | null>(null);
+  const [nodeCount, setNodeCount] = useState<number>(0);
+  const [recentNodes, setRecentNodes] = useState<Array<{ id: string; name: string; category: string }>>([]);
 
   useTaskWebSocket(taskId, async (update) => {
     if (update.progress !== undefined) setProgress(update.progress);
@@ -33,11 +35,13 @@ const GeneratePage: React.FC = () => {
     if (update.attempts !== undefined) setAttempts(update.attempts);
     if (update.maxAttempts !== undefined) setMaxAttempts(update.maxAttempts);
     if (update.nextRetryAt) setNextRetryAt(update.nextRetryAt);
+    if (update.nodeCount !== undefined) setNodeCount(update.nodeCount);
 
-    if (update.status === 'skeleton_ready' && update.treeId) {
-      setGenerating(false);
-      navigate(`/tree/${update.treeId}`, { replace: true });
-      return;
+    if (update.nodeId && update.nodeData) {
+      setRecentNodes(prev => {
+        const next = [{ id: update.nodeId!, name: update.nodeData?.name || update.nodeId!, category: update.nodeData?.category || 'general' }, ...prev];
+        return next.slice(0, 8);
+      });
     }
 
     if (update.status === 'completed' && update.treeId) {
@@ -76,12 +80,6 @@ const GeneratePage: React.FC = () => {
             navigate(status.result.id ? `/tree/${status.result.id}` : `/tree/${status.result.data.id}`, { replace: true });
           }
           break;
-        case 'skeleton_ready':
-          if (status.treeId) {
-            setGenerating(false);
-            navigate(`/tree/${status.treeId}`, { replace: true });
-          }
-          break;
         case 'failed':
           storage.clearPendingTask();
           setError(status.error || '生成失败，请稍后重试');
@@ -103,6 +101,7 @@ const GeneratePage: React.FC = () => {
           if (status.progress !== undefined) setProgress(status.progress);
           if (status.phase) setPhase(status.phase);
           if (status.preview) setPreview(status.preview);
+          if (status.nodeCount !== undefined) setNodeCount(status.nodeCount);
           setAttempts(status.attempts ?? null);
           setMaxAttempts(status.maxAttempts ?? null);
           setNextRetryAt(status.nextRetryAt ?? null);
@@ -252,15 +251,53 @@ const GeneratePage: React.FC = () => {
             </div>
           </div>
 
-          {preview && (
-            <div className="p-4 bg-app-surface/50 rounded-xl font-mono text-xs text-app-muted/70 h-24 overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-t from-app-surface/50 via-transparent to-transparent pointer-events-none" />
-              <p className="break-all leading-relaxed">{preview}</p>
+          {nodeCount > 0 && (
+            <div className="p-4 bg-app-surface/50 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-app-text">实时节点生成</span>
+                <span className="text-2xl font-black text-skill-core">{nodeCount}</span>
+              </div>
+              {recentNodes.length > 0 && (
+                <div className="space-y-1.5">
+                  {recentNodes.map((node, idx) => (
+                    <div
+                      key={node.id}
+                      className="flex items-center gap-2 text-xs animate-fade-in"
+                      style={{ opacity: 1 - idx * 0.1 }}
+                    >
+                      <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
+                        node.category === 'core' ? 'bg-blue-400' :
+                        node.category === 'specialization' ? 'bg-orange-400' :
+                        'bg-purple-400'
+                      }`} />
+                      <span className="text-app-muted truncate">{node.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
+          {preview && !nodeCount && (
+          <div className="p-4 bg-app-surface/50 rounded-xl text-sm text-app-muted/80">
+            <p className="break-all leading-relaxed">
+              {(() => {
+                let cleanText = preview;
+                cleanText = cleanText.replace(/[{}\[\]"]/g, '');
+                cleanText = cleanText.replace(/\\n/g, ' ');
+                cleanText = cleanText.replace(/\s+/g, ' ');
+                if (cleanText.length > 200) {
+                  cleanText = cleanText.substring(0, 200) + '...';
+                }
+                return cleanText;
+              })()}
+            </p>
+          </div>
+        )}
+
           <p className="text-center text-sm text-app-muted">
             AI 正在为你规划「<span className="text-skill-core font-bold">{career}</span>」的技能图谱
+            {nodeCount > 0 && <span className="ml-1">· 已生成 <span className="text-skill-core font-bold">{nodeCount}</span> 个节点</span>}
           </p>
 
           <button onClick={handleCancel} className="block mx-auto text-sm text-app-muted hover:text-app-text">

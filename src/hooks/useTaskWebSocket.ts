@@ -15,6 +15,7 @@ export interface TaskUpdate {
   nextRetryAt?: string;
   nodeId?: string;
   nodeData?: any;
+  nodeCount?: number;
 }
 
 export function useTaskWebSocket(

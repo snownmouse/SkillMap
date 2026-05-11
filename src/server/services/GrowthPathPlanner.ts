@@ -1,6 +1,25 @@
 import type { SkillTreeData } from '../../types/skillTree';
+import { CAREER_PATHS, getPathById, calculateFitScore } from '../prompts/theoryFramework';
 
 export type PlanPath = 'tech' | 'management' | 'slash' | 'grassroot' | 'national_strategy' | 'startup' | 'stable';
+
+export interface ChineseDimension {
+  jiaGuoQingHuai: number;
+  yiLiJianGu: number;
+  mingDeHongDao: number;
+  shiJianZhiXiang: number;
+}
+
+export interface CareerFitScore {
+  hollandMatch: number;
+  careerAnchorMatch: number;
+  nationalDemand: number;
+  socialContribution: number;
+  culturalHeritage: number;
+  grassrootWillingness: number;
+  chineseDimension: ChineseDimension;
+  finalScore: number;
+}
 
 export interface Dimension {
   valueAlignment: number;
@@ -44,6 +63,8 @@ export interface GrowthPlan {
     estimatedDays: number;
   };
   dimension?: Dimension;
+  chineseDimension?: ChineseDimension;
+  fitScore?: number;
 }
 
 export interface PlanOptions {
@@ -52,6 +73,7 @@ export interface PlanOptions {
   weeklyHours: number;
   goalNodeId?: string;
   priorityAdjustments?: Record<string, number>;
+  dimensionScores?: Record<string, number>;
 }
 
 const PATH_WEIGHTS: Record<PlanPath, { core?: number; specialization?: number; general?: number; grassroot?: number }> = {
@@ -62,6 +84,16 @@ const PATH_WEIGHTS: Record<PlanPath, { core?: number; specialization?: number; g
   national_strategy: { core: 1.1, specialization: 1.05, general: 0.9, grassroot: 1.1 },
   startup: { core: 0.9, specialization: 1.1, general: 1.0, grassroot: 0.95 },
   stable: { core: 0.85, specialization: 0.9, general: 1.1 }
+};
+
+const CHINESE_DIMENSION_DEFAULTS: Record<PlanPath, ChineseDimension> = {
+  tech: { jiaGuoQingHuai: 60, yiLiJianGu: 70, mingDeHongDao: 75, shiJianZhiXiang: 65 },
+  management: { jiaGuoQingHuai: 75, yiLiJianGu: 80, mingDeHongDao: 85, shiJianZhiXiang: 70 },
+  slash: { jiaGuoQingHuai: 70, yiLiJianGu: 75, mingDeHongDao: 75, shiJianZhiXiang: 75 },
+  grassroot: { jiaGuoQingHuai: 95, yiLiJianGu: 90, mingDeHongDao: 85, shiJianZhiXiang: 100 },
+  national_strategy: { jiaGuoQingHuai: 90, yiLiJianGu: 85, mingDeHongDao: 80, shiJianZhiXiang: 85 },
+  startup: { jiaGuoQingHuai: 75, yiLiJianGu: 70, mingDeHongDao: 70, shiJianZhiXiang: 80 },
+  stable: { jiaGuoQingHuai: 65, yiLiJianGu: 75, mingDeHongDao: 80, shiJianZhiXiang: 60 }
 };
 
 const DIMENSION_WEIGHTS: Record<PlanPath, Dimension> = {
@@ -200,7 +232,9 @@ export function generateGrowthPlan(tree: SkillTreeData, opts: PlanOptions): Grow
       includedNodeIds: [],
       prunedNodes: [],
       milestones: [],
-      stats: { totalNodes: 0, totalHours: 0, weeklyHours, estimatedDays: 0 }
+      stats: { totalNodes: 0, totalHours: 0, weeklyHours, estimatedDays: 0 },
+      chineseDimension: CHINESE_DIMENSION_DEFAULTS[opts.path],
+      fitScore: opts.dimensionScores ? calculateFitScore(opts.path, opts.dimensionScores) : undefined
     };
   }
 
@@ -280,7 +314,9 @@ export function generateGrowthPlan(tree: SkillTreeData, opts: PlanOptions): Grow
       return { nodeId: id, reason, recoverWhen };
     });
 
-  const dimension = DIMENSION_WEIGHTS[opts.path] || DIMENSION_WEIGHTS.tech;
+  const dimension = DIMENSION_WEIGHTS[opts.path];
+  const chineseDimension = CHINESE_DIMENSION_DEFAULTS[opts.path];
+  const fitScore = opts.dimensionScores ? calculateFitScore(opts.path, opts.dimensionScores) : undefined;
 
   return {
     path: opts.path,
@@ -294,7 +330,9 @@ export function generateGrowthPlan(tree: SkillTreeData, opts: PlanOptions): Grow
       weeklyHours,
       estimatedDays
     },
-    dimension
+    dimension,
+    chineseDimension,
+    fitScore
   };
 }
 
@@ -330,4 +368,38 @@ export function getDimensionDescription(dimension: Dimension): string {
   }
 
   return parts.length > 0 ? parts.join('；') : '综合发展';
+}
+
+export function getChineseDimensionDescription(chineseDimension: ChineseDimension): string {
+  const parts: string[] = [];
+
+  if (chineseDimension.jiaGuoQingHuai >= 80) {
+    parts.push('家国情怀深厚：积极响应国家号召');
+  } else if (chineseDimension.jiaGuoQingHuai >= 60) {
+    parts.push('家国情怀：关注国家发展需求');
+  }
+
+  if (chineseDimension.yiLiJianGu >= 80) {
+    parts.push('义利兼顾：重视社会责任与个人发展统一');
+  } else if (chineseDimension.yiLiJianGu >= 60) {
+    parts.push('注重平衡：兼顾个人利益与社会责任');
+  }
+
+  if (chineseDimension.mingDeHongDao >= 80) {
+    parts.push('明德弘道：追求高尚的职业道德');
+  } else if (chineseDimension.mingDeHongDao >= 60) {
+    parts.push('注重修养：重视职业道德建设');
+  }
+
+  if (chineseDimension.shiJianZhiXiang >= 80) {
+    parts.push('实践志向明确：积极投身基层实践');
+  } else if (chineseDimension.shiJianZhiXiang >= 60) {
+    parts.push('实践导向：注重理论联系实际');
+  }
+
+  return parts.length > 0 ? parts.join('；') : '全面发展';
+}
+
+export function getCareerPaths() {
+  return CAREER_PATHS;
 }

@@ -26,7 +26,7 @@ export class ArkProvider implements ILLMProvider {
     private model: string,
     private temperature: number,
     private maxTokens: number,
-    private requestTimeoutMs: number = 90000
+    private requestTimeoutMs: number = 600000
   ) {}
 
   getName(): string {
@@ -47,14 +47,15 @@ export class ArkProvider implements ILLMProvider {
 
   async chat(messages: LLMMessage[]): Promise<LLMResponse> {
     console.log('=== 开始 Ark API 调用 ===');
-    
+
     const requestBody = {
       model: this.model,
       messages: messages.map(msg => ({
         role: msg.role,
         content: msg.content
       })),
-      temperature: this.temperature
+      temperature: this.temperature,
+      max_completion_tokens: this.maxTokens,
     };
 
     console.log('请求 URL:', `${this.baseUrl}/chat/completions`);
@@ -129,8 +130,16 @@ export class ArkProvider implements ILLMProvider {
         content: msg.content
       })),
       temperature: this.temperature,
+      max_completion_tokens: this.maxTokens,
       stream: true,
     };
+
+    console.log('[DEBUG] Ark chatStream 请求参数:', JSON.stringify({
+      model: this.model,
+      temperature: this.temperature,
+      max_completion_tokens: this.maxTokens,
+      stream: true,
+    }, null, 2));
 
     const startTime = Date.now();
     const controller = new AbortController();
@@ -161,7 +170,7 @@ export class ArkProvider implements ILLMProvider {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
+
       const decoded = this.decodeResponse(value);
       buffer += decoded;
 
@@ -177,15 +186,53 @@ export class ArkProvider implements ILLMProvider {
 
         try {
           const json = JSON.parse(dataStr);
-          const delta = json?.choices?.[0]?.delta?.content || '';
-          if (delta) {
-            content += delta;
-            callbacks.onDelta(delta);
+          const choice = json?.choices?.[0];
+          const delta = choice?.delta;
+          
+          // 过滤 thinking 内容，只保留实际回答
+          if (delta?.content) {
+            content += delta.content;
+            callbacks.onDelta(delta.content);
           }
-        } catch {
+          // thinking_content 不混入 content，但可以记录日志
+          if (delta?.thinking_content) {
+            // 深度思考内容，不发送给前端
+          }
+          
+          // 检测 finish_reason
+          if (choice?.finish_reason) {
+            console.log('[DEBUG] 流式完成，finish_reason:', choice.finish_reason);
+          }
+          if (json?.usage) {
+            console.log('[DEBUG] 流式usage:', JSON.stringify(json.usage));
+          }
+        } catch (e) {
+          console.log('[WARN] SSE 事件解析失败:', e.message, '数据:', dataStr.substring(0, 100));
         }
       }
     }
+
+    if (buffer.trim()) {
+      const lines = buffer.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+        const dataStr = trimmed.slice(5).trim();
+        if (!dataStr || dataStr === '[DONE]') continue;
+        try {
+          const json = JSON.parse(dataStr);
+          const delta = json?.choices?.[0]?.delta;
+          if (delta?.content) {
+            content += delta.content;
+            callbacks.onDelta(delta.content);
+          }
+        } catch (e) {
+          console.log('[WARN] 残留 buffer 解析失败:', e.message, '数据:', dataStr.substring(0, 100));
+        }
+      }
+    }
+
+    console.log('[DEBUG] 流式读取完成，content 长度:', content.length, '预期至少 9507');
 
     const latency = Date.now() - startTime;
     console.log('Ark 流式调用耗时:', latency, 'ms');

@@ -14,6 +14,35 @@ const statusColors = {
   completed: { bg: '#e0f0e0', border: '#6bbd6b', text: '#4a8a4a' }
 };
 
+function getLayoutConfig(data: SkillTreeData) {
+  const nodeIds = new Set(Object.keys(data.nodes));
+  const hasIncoming = new Set<string>();
+  for (const edge of data.edges) {
+    if (nodeIds.has(edge.to)) hasIncoming.add(edge.to);
+  }
+  const rootNodes = Object.keys(data.nodes).filter(id => !hasIncoming.has(id));
+
+  const layout: Record<string, any> = {
+    name: 'breadthfirst',
+    directed: true,
+    padding: 80,
+    spacingFactor: rootNodes.length > 2 ? 1.0 : 1.5,
+    animate: true,
+    animationDuration: 600,
+    animationEasing: 'ease-out-cubic',
+    circle: false,
+    grid: false,
+    avoidOverlap: true,
+    nodeDimensionsIncludeLabels: true,
+  };
+
+  if (rootNodes.length > 0) {
+    layout.roots = rootNodes;
+  }
+
+  return layout;
+}
+
 const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeClick }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
@@ -166,19 +195,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           }
         }
       ],
-      layout: {
-        name: 'breadthfirst',
-        directed: true,
-        padding: 50,
-        spacingFactor: 1.0,
-        animate: true,
-        animationDuration: 600,
-        animationEasing: 'ease-out-cubic',
-        roots: undefined as any,
-        circle: false,
-        grid: false,
-        avoidOverlap: true
-      } as any,
+      layout: getLayoutConfig(data) as any,
       userZoomingEnabled: true,
       userPanningEnabled: true,
       boxSelectionEnabled: false,
@@ -318,19 +335,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           }
         });
       } else {
-        cy.layout({
-          name: 'breadthfirst',
-          directed: true,
-          padding: 50,
-          spacingFactor: 1.0,
-          animate: true,
-          animationDuration: 600,
-          animationEasing: 'ease-out-cubic',
-          roots: undefined as any,
-          circle: false,
-          grid: false,
-          avoidOverlap: true
-        } as any).run();
+        cy.layout(getLayoutConfig(data) as any).run();
       }
     } else {
       cy.nodes().forEach(node => {

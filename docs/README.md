@@ -112,13 +112,42 @@ src/
 
 ## 文档指南
 
-- [内测指南 (BETA_TESTING_GUIDE.md)](BETA_TESTING_GUIDE.md): 内测范围、环境配置、测试步骤
-- [下一步改造路线图 (NEXT_STEPS_ROADMAP.md)](NEXT_STEPS_ROADMAP.md): 内网多用户 → 公网多用户的风险清单与改造优先级
-- [数据库迁移指南 (DATABASE_MIGRATION_GUIDE.md)](DATABASE_MIGRATION_GUIDE.md): SQLite 与 PostgreSQL 切换
-- [前端风格指南 (FRONTEND_STYLE_GUIDE.md)](FRONTEND_STYLE_GUIDE.md): Meadow Mist 设计风格
-- [回滚指南 (ROLLBACK_GUIDE.md)](ROLLBACK_GUIDE.md): 问题处理与回滚策略
-- [OpenAPI 文档 (openapi.yaml)](openapi.yaml): 接口定义
-- [数据字典 (data-dictionary.csv)](data-dictionary.csv): 表结构字段说明（可直接用 Excel 打开）
+### 架构与设计 (`architecture/`)
+
+- [技术架构文档 (ARCHITECTURE.md)](architecture/ARCHITECTURE.md): 系统架构、前后端结构、数据模型、API 设计
+- [中国特色生涯规划体系 (CHINESE_CAREER_PLAN_SYSTEM.md)](architecture/CHINESE_CAREER_PLAN_SYSTEM.md): 中西融合的生涯规划理论框架
+- [前端风格指南 (FRONTEND_STYLE_GUIDE.md)](architecture/FRONTEND_STYLE_GUIDE.md): Meadow Mist 设计风格
+- [提示词设计指南 (PROMPT_DESIGN_GUIDE.md)](architecture/PROMPT_DESIGN_GUIDE.md): 提示词设计理念与理论框架
+
+### 安装与配置 (`setup/`)
+
+- [构建与部署指南 (BUILD_GUIDE.md)](setup/BUILD_GUIDE.md): 开发/生产环境构建与部署
+- [环境配置指南 (ENVIRONMENT_GUIDE.md)](setup/ENVIRONMENT_GUIDE.md): 环境变量与 LLM 供应商配置
+- [数据库迁移指南 (DATABASE_MIGRATION_GUIDE.md)](setup/DATABASE_MIGRATION_GUIDE.md): SQLite 与 PostgreSQL 切换
+- [内测指南 (BETA_TESTING_GUIDE.md)](setup/BETA_TESTING_GUIDE.md): 内测范围、环境配置、测试步骤
+
+### API 与接口 (`api/`)
+
+- [API 文档 (API_GUIDE.md)](api/API_GUIDE.md): RESTful API 接口说明
+- [WebSocket 指南 (WEBSOCKET_GUIDE.md)](api/WEBSOCKET_GUIDE.md): WebSocket 连接与消息协议
+- [OpenAPI 文档 (openapi.yaml)](api/openapi.yaml): 接口定义（Swagger 格式）
+- [数据字典 (data-dictionary.csv)](api/data-dictionary.csv): 表结构字段说明（可直接用 Excel 打开）
+
+### 运维与安全 (`operations/`)
+
+- [回滚指南 (ROLLBACK_GUIDE.md)](operations/ROLLBACK_GUIDE.md): 问题处理与回滚策略
+- [安全指南 (SECURITY.md)](operations/SECURITY.md): 安全架构与防护机制
+- [下一步改造路线图 (NEXT_STEPS_ROADMAP.md)](operations/NEXT_STEPS_ROADMAP.md): 内网多用户 → 公网多用户的风险清单与改造优先级
+- [项目优化指南 (PROJECT_OPTIMIZATION_GUIDE.md)](operations/PROJECT_OPTIMIZATION_GUIDE.md): 项目优化与理论结合建议
+
+### 版本对比
+
+- [内测版优势分析 (内测版优势分析.md)](内测版优势分析.md): 内测版与完整版对比及借鉴建议
+- [差异文件说明 (差异文件说明.md)](差异文件说明.md): 内测版与主项目文件结构差异
+
+### 社区
+
+- [贡献指南 (CONTRIBUTING.md)](CONTRIBUTING.md): 如何参与项目贡献
 
 ## 贡献
 

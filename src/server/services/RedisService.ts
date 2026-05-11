@@ -8,7 +8,7 @@ let subClient: RedisClientType | null = null;
 let subConnectPromise: Promise<void> | null = null;
 
 type CacheValue = { v: any; e?: number };
-const memoryCache = new Map<string, CacheValue>();
+export const memoryCache = new Map<string, CacheValue>();
 
 function nowMs() {
   return Date.now();

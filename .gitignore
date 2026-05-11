@@ -14,3 +14,9 @@ dataset/
 .iga/
 skill-tree-report.html
 remove-bad-file.ps1
+debug-*.cjs
+debug-*.js
+debug-*.json
+test-fix*.cjs
+logs/
+data/

@@ -2,7 +2,8 @@
  * 本地存储封装
  */
 const STORAGE_KEY = 'skillmap_state';
-const LAST_TREE_ID_KEY = 'skillmap_last_tree_id';
+const LEGACY_LAST_TREE_ID_KEY = 'skillmap_last_tree_id';
+const LAST_TREE_ID_PREFIX = 'skillmap_last_tree_id:';
 const PENDING_TASK_KEY = 'skillmap_pending_task';
 
 interface PendingTaskState {
@@ -15,10 +16,11 @@ export const storage = {
   save(state: any) {
     try {
       // 排除临时状态
-      const { isGenerating, isChatLoading, error, ...persistentState } = state;
+      const { isGenerating, isChatLoading, error, authHydrated, ...persistentState } = state;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persistentState));
       if (persistentState.skillTree?.id) {
-        localStorage.setItem(LAST_TREE_ID_KEY, persistentState.skillTree.id);
+        const userId = persistentState.auth?.user?.id || null;
+        this.saveLastTreeId(persistentState.skillTree.id, userId);
       }
     } catch (e) {
       console.warn('无法保存到 localStorage:', e);
@@ -37,24 +39,69 @@ export const storage = {
 
   clear() {
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(LAST_TREE_ID_KEY);
+    localStorage.removeItem(LEGACY_LAST_TREE_ID_KEY);
     localStorage.removeItem(PENDING_TASK_KEY);
+    try {
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(LAST_TREE_ID_PREFIX))
+        .forEach((key) => localStorage.removeItem(key));
+    } catch (e) {
+      console.warn('无法清除最近技能树缓存:', e);
+    }
   },
 
-  saveLastTreeId(treeId: string) {
+  getCurrentUserId() {
     try {
-      localStorage.setItem(LAST_TREE_ID_KEY, treeId);
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return null;
+      const state = JSON.parse(stored);
+      return state?.auth?.user?.id || null;
+    } catch {
+      return null;
+    }
+  },
+
+  getLastTreeIdKey(userId?: string | null) {
+    const resolvedUserId = userId ?? this.getCurrentUserId();
+    return resolvedUserId ? `${LAST_TREE_ID_PREFIX}${resolvedUserId}` : null;
+  },
+
+  saveLastTreeId(treeId: string, userId?: string | null) {
+    try {
+      const scopedKey = this.getLastTreeIdKey(userId);
+      if (scopedKey) {
+        localStorage.setItem(scopedKey, treeId);
+        return;
+      }
+      localStorage.setItem(LEGACY_LAST_TREE_ID_KEY, treeId);
     } catch (e) {
       console.warn('无法保存最近技能树 ID:', e);
     }
   },
 
-  loadLastTreeId() {
+  loadLastTreeId(userId?: string | null) {
     try {
-      return localStorage.getItem(LAST_TREE_ID_KEY);
+      const scopedKey = this.getLastTreeIdKey(userId);
+      if (scopedKey) {
+        return localStorage.getItem(scopedKey);
+      }
+      return localStorage.getItem(LEGACY_LAST_TREE_ID_KEY);
     } catch (e) {
       console.warn('无法加载最近技能树 ID:', e);
       return null;
+    }
+  },
+
+  clearLastTreeId(userId?: string | null) {
+    try {
+      const scopedKey = this.getLastTreeIdKey(userId);
+      if (scopedKey) {
+        localStorage.removeItem(scopedKey);
+        return;
+      }
+      localStorage.removeItem(LEGACY_LAST_TREE_ID_KEY);
+    } catch (e) {
+      console.warn('无法清除最近技能树 ID:', e);
     }
   },
 

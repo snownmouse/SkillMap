@@ -7,14 +7,15 @@ interface RateLimitEntry {
 
 const userLimits: Map<string, RateLimitEntry> = new Map();
 
+const isDev = process.env.NODE_ENV !== 'production';
 const LIMITS = {
-  chat: { windowMs: 60 * 60 * 1000, maxRequests: 30 },
-  tree_generate: { windowMs: 60 * 60 * 1000, maxRequests: 5 },
-  default: { windowMs: 60 * 1000, maxRequests: 20 },
+  chat: { windowMs: 60 * 60 * 1000, maxRequests: isDev ? 9999 : 30 },
+  tree_generate: { windowMs: 60 * 60 * 1000, maxRequests: isDev ? 9999 : 5 },
+  default: { windowMs: 60 * 1000, maxRequests: isDev ? 9999 : 20 },
 };
 
 let globalLlmCalls = { count: 0, resetAt: Date.now() + 60 * 1000 };
-const GLOBAL_LLM_LIMIT = 100;
+const GLOBAL_LLM_LIMIT = isDev ? 500 : 100;
 
 export function llmRateLimiter(req: Request, res: Response, next: NextFunction) {
   const now = Date.now();
@@ -32,8 +33,12 @@ export function llmRateLimiter(req: Request, res: Response, next: NextFunction) 
   }
 
   const userId = (req as any).user?.id || req.ip || 'unknown';
-  const key = `llm:${userId}`;
-  const limit = LIMITS.chat;
+  const path = req.path || '';
+  let action: keyof typeof LIMITS = 'default';
+  if (path.includes('/generate')) action = 'tree_generate';
+  else if (path.includes('/chat')) action = 'chat';
+  const key = `llm:${userId}:${action}`;
+  const limit = LIMITS[action];
 
   let entry = userLimits.get(key);
   if (!entry || now > entry.resetAt) {
@@ -46,7 +51,8 @@ export function llmRateLimiter(req: Request, res: Response, next: NextFunction) 
       error: '请求过于频繁，请稍后再试',
       retryAfter: Math.ceil((entry.resetAt - now) / 1000),
       limit: limit.maxRequests,
-      window: '1小时',
+      window: action === 'tree_generate' ? '1小时' : '1小时',
+      type: action,
     });
     return;
   }

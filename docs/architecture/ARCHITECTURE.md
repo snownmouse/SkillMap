@@ -28,7 +28,36 @@
 ### 2.1 架构概览
 SkillMap 采用前后端同仓的一体化架构：开发环境由 `server.ts` 启动 Express 并挂载 Vite 中间件；生产环境默认提供静态资源服务，并可通过环境变量开关启用 SSR。
 
-### 2.2 核心流程
+### 2.2 项目目录结构
+```
+.
+├── server.ts              # 服务端入口
+├── worker.ts              # 后台工作进程入口
+├── src/                   # 源代码
+│   ├── components/        # 前端组件
+│   ├── context/           # 全局状态
+│   ├── hooks/             # 自定义 Hooks
+│   ├── pages/             # 页面组件
+│   ├── server/            # 后端业务代码
+│   ├── services/          # 前端 API 封装
+│   ├── types/             # 类型定义
+│   └── utils/             # 工具函数
+├── scripts/               # 工具脚本
+│   ├── db/                # 数据库迁移脚本
+│   └── style/             # 样式替换脚本
+├── docs/                  # 项目文档
+│   ├── architecture/      # 架构与设计文档
+│   ├── setup/             # 安装配置文档
+│   ├── api/               # API 与接口文档
+│   └── operations/        # 运维与安全文档
+├── tests/                 # 测试脚本
+├── .github/workflows/     # CI/CD 工作流
+├── Dockerfile             # Docker 镜像构建
+├── docker-compose.yml     # Docker Compose 配置
+└── ecosystem.config.cjs   # PM2 进程管理
+```
+
+### 2.3 核心流程
 
 #### 技能树生成流程
 ```
@@ -46,31 +75,38 @@ SkillMap 采用前后端同仓的一体化架构：开发环境由 `server.ts` �
 ```
 src/
 ├── components/        # 可复用组件
+│   ├── Assessment/    # 职业测评组件
 │   ├── Chat/          # 对话相关组件
 │   ├── Debug/         # 调试相关组件
 │   ├── Generate/      # 生成相关组件
 │   ├── Layout/        # 布局组件
 │   ├── SkillTree/     # 技能树相关组件
-│   └── Timeline/      # 时间线组件
+│   ├── Timeline/      # 时间线组件
+│   └── PrivateRoute.tsx  # 路由守卫
 ├── context/           # React 上下文
 ├── hooks/             # 自定义 Hooks
 │   ├── useChat.ts          # 对话相关逻辑
 │   ├── useLocalStorage.ts  # 本地存储
 │   ├── useSkillTree.ts     # 技能树相关逻辑
+│   ├── useTaskWebSocket.ts # 任务 WebSocket 订阅
 │   ├── useVoiceInput.ts   # 语音识别（STT）
 │   ├── useVoiceOutput.ts  # 语音合成（TTS）
 │   └── useWebSocket.ts    # WebSocket 连接
 ├── pages/             # 页面组件
-├── server/            # 后端代码（SSR）
+├── server/            # 后端代码
 ├── services/          # 前端服务层
-│   ├── difyApi.ts    # Dify API 服务
-│   └── storage.ts    # 本地存储服务
+│   ├── apiClient.ts   # 统一 API 客户端
+│   ├── difyApi.ts     # Dify API 服务
+│   ├── geminiService.ts # Gemini 服务
+│   └── storage.ts     # 本地存储服务
 ├── types/             # TypeScript 类型定义
 ├── utils/             # 工具函数
 ├── App.tsx            # 应用入口
+├── AppRoutes.tsx      # 路由配置
 ├── config.ts          # 前端配置
+├── entry-server.tsx   # SSR 入口
 ├── index.css          # 全局样式
-└── main.tsx          # 主入口
+└── main.tsx           # 主入口
 ```
 
 ### 3.2 核心组件
@@ -114,60 +150,95 @@ src/
 ```
 src/server/
 ├── controllers/       # 控制器
-│   ├── authController.ts    # 认证相关
-│   ├── careerController.ts  # 职业规划相关
-│   ├── chatController.ts    # 对话相关
-│   ├── goalController.ts    # 目标/成长计划相关
-│   └── treeController.ts    # 技能树相关
+│   ├── assessmentController.ts  # 职业测评
+│   ├── authController.ts       # 认证相关
+│   ├── careerController.ts     # 职业规划相关
+│   ├── careerPlanController.ts # 职业规划生成
+│   ├── chatController.ts       # 对话相关
+│   ├── goalController.ts       # 目标/成长计划相关
+│   ├── planningController.ts   # 路径规划
+│   └── treeController.ts       # 技能树相关
+├── database/          # 数据库工具
+│   └── sqlBuilder.ts          # SQL 构建器
+├── llmProviders/      # LLM 提供商
+│   ├── base.ts                 # 基础接口
+│   ├── providers.ts            # 提供商管理
+│   ├── dummy.ts                # 模拟提供商
+│   └── gemini.ts               # Gemini 提供商
 ├── middleware/         # 中间件
-│   ├── security.ts        # 安全相关（rateLimit, sanitizeInput, securityHeaders）
-│   ├── requestTracer.ts   # 请求追踪
-│   ├── metrics.ts        # 指标收集中间件
-│   └── llmRateLimit.ts   # LLM 速率限制
+│   ├── errorHandler.ts         # 错误处理
+│   ├── llmRateLimit.ts         # LLM 速率限制
+│   ├── metrics.ts              # 指标收集中间件
+│   ├── requestTracer.ts        # 请求追踪
+│   ├── security.ts             # 安全相关（rateLimit, sanitizeInput, securityHeaders）
+│   ├── tracing.ts              # 分布式追踪
+│   └── validation.ts           # 请求验证
+├── migrations/         # 数据库迁移
+│   ├── 0001_initial.ts         # 初始表结构
+│   ├── 0002_guest_sessions_and_tasks_user.ts
+│   ├── 0003_tasks_inputs.ts
+│   ├── 0004_tasks_retry_and_leases.ts
+│   └── index.ts                # 迁移入口
 ├── prompts/           # 提示词模板
-│   ├── careerPlan.ts       # 职业规划提示词
-│   ├── chatSummary.ts      # 对话总结提示词
-│   ├── checkinChat.ts      # 对话提示词
-│   ├── generateTree.ts     # 技能树生成提示词
-│   └── learningSuggestion.ts # 学习建议提示词
+│   ├── careerPlan.ts           # 职业规划提示词
+│   ├── chatSummary.ts          # 对话总结提示词
+│   ├── checkinChat.ts          # 对话提示词
+│   ├── generateNodeDetails.ts  # 节点详情生成提示词
+│   ├── generateTree.ts         # 技能树生成提示词
+│   ├── generateTreeExpand.ts   # 技能树扩展提示词
+│   ├── generateTreeSkeleton.ts # 技能树骨架生成提示词
+│   ├── learningSuggestion.ts   # 学习建议提示词
+│   ├── planningPaths.ts        # 规划路径提示词
+│   ├── promptTemplate.ts       # 通用模板
+│   └── theoryFramework.ts      # 理论框架提示词
 ├── repositories/      # 数据访问层
-│   ├── AbilityRepository.ts     # 能力数据仓库
+│   ├── AbilityRepository.ts    # 能力数据仓库
 │   ├── ChatMessageRepository.ts # 对话消息数据仓库
 │   ├── SkillTermRepository.ts  # 技能术语仓库
-│   └── TreeRepository.ts        # 技能树数据仓库
+│   ├── TreeRepository.ts       # 技能树数据仓库
+│   └── index.ts                # 仓库导出
 ├── routes/            # API 路由
-│   ├── auth.ts        # 认证路由
-│   ├── career.ts      # 职业规划路由
-│   ├── chat.ts        # 对话路由
-│   ├── debug.ts       # 调试路由
-│   ├── goals.ts       # 目标/成长计划路由
-│   └── tree.ts        # 技能树路由
+│   ├── assessment.ts           # 职业测评路由
+│   ├── auth.ts                 # 认证路由
+│   ├── career.ts               # 职业规划路由
+│   ├── careerPlan.ts           # 职业规划生成路由
+│   ├── chat.ts                 # 对话路由
+│   ├── debug.ts                # 调试路由
+│   ├── goals.ts                # 目标/成长计划路由
+│   ├── planning.ts             # 路径规划路由
+│   └── tree.ts                 # 技能树路由
 ├── services/          # 业务逻辑层
 │   ├── AbilityService.ts       # 能力服务
 │   ├── AchievementService.ts   # 成就服务
-│   ├── AlertService.ts        # 告警服务
-│   ├── BackupService.ts       # 备份服务
-│   ├── CacheService.ts        # 缓存服务
+│   ├── AlertService.ts         # 告警服务
+│   ├── BackupService.ts        # 备份服务
+│   ├── CacheService.ts         # 缓存服务
 │   ├── ChatMessageService.ts   # 对话消息服务
+│   ├── GrowthPathPlanner.ts    # 成长路径规划
 │   ├── LearningPlanService.ts  # 学习计划服务
-│   ├── MetricsService.ts     # 指标服务
+│   ├── MessageBufferService.ts # 消息缓冲服务
+│   ├── MetricsService.ts       # 指标服务
 │   ├── ProgressService.ts      # 进度服务
 │   ├── QualityAssessmentService.ts # 质量评估服务
+│   ├── RedisService.ts         # Redis 服务
+│   ├── TaskQueueService.ts     # 任务队列服务
+│   ├── TaskRecoveryService.ts  # 任务恢复服务
+│   ├── TaskSchedulerService.ts # 任务调度服务
 │   ├── TimelineService.ts      # 时间线服务
-│   └── TreeVersionService.ts   # 技能树版本服务
+│   ├── TreeTemplateCacheService.ts # 技能树模板缓存
+│   ├── TreeVersionService.ts   # 技能树版本服务
+│   └── index.ts                # 服务导出
 ├── utils/             # 工具函数
-│   ├── JsonRepairUtils.ts # JSON 修复工具
-│   ├── Logger.ts       # 日志工具
-│   ├── jsonParser.ts  # JSON 解析工具
-│   └── logger.ts      # 日志工具(兼容)
-├── llmProviders/     # LLM 提供商
-│   ├── base.ts       # 基础接口
-│   ├── providers.ts   # 提供商管理
-│   ├── dummy.ts      # 模拟提供商
-│   └── gemini.ts     # Gemini 提供商
+│   ├── JsonRepairUtils.ts      # JSON 修复工具
+│   ├── auth.ts                 # 认证工具
+│   ├── jobSdfData.ts           # 职业 SDF 数据
+│   ├── jsonParser.ts           # JSON 解析工具
+│   └── logger.ts               # 日志工具
+├── app.ts             # Express 应用创建与中间件/路由注册
 ├── config.ts          # 后端配置
 ├── database.ts        # 数据库连接
 ├── llmService.ts      # LLM 服务
+├── migrate.ts         # 迁移运行器
 └── websocket.ts       # WebSocket 服务
 ```
 

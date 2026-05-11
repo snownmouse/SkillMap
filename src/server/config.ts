@@ -31,8 +31,8 @@ export const config = {
   llm: {
     provider: (process.env.LLM_PROVIDER || 'dummy') as LLMProvider,
     temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.3'),
-    maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '4000'),
-    requestTimeoutMs: parseInt(process.env.LLM_REQUEST_TIMEOUT_MS || '90000'),
+    maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '65536'),
+    requestTimeoutMs: parseInt(process.env.LLM_REQUEST_TIMEOUT_MS || '600000'),
 
     gemini: {
       apiKey: process.env.GEMINI_API_KEY || '',

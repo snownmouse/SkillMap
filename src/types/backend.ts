@@ -75,6 +75,29 @@ export interface ChatRecord {
   createdAt: string;
 }
 
+export interface ChineseDimension {
+  jiaGuoQingHuai: number;
+  yiLiJianGu: number;
+  mingDeHongDao: number;
+  shiJianZhiXiang: number;
+}
+
+export interface WesternDimension {
+  hollandMatch: number;
+  careerAnchorMatch: number;
+}
+
+export interface CareerFitScore {
+  hollandMatch: number;
+  careerAnchorMatch: number;
+  nationalDemand: number;
+  socialContribution: number;
+  culturalHeritage: number;
+  grassrootWillingness: number;
+  chineseDimension: ChineseDimension;
+  finalScore: number;
+}
+
 export interface Dimension {
   valueAlignment: number;
   practiceOrientation: number;

@@ -8,6 +8,7 @@ export interface TaskStatus {
   phase?: string;
   preview?: string;
   treeId?: string;
+  nodeCount?: number;
   attempts?: number;
   maxAttempts?: number;
   nextRetryAt?: string;

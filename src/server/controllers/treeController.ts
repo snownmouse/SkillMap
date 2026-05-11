@@ -4,7 +4,8 @@ import { getDb } from '../database';
 import { llmService } from '../llmService';
 import { getGenerateTreePrompt } from '../prompts/generateTree';
 import { getGenerateTreeSkeletonPrompt } from '../prompts/generateTreeSkeleton';
-import { getNodeDetailsPrompt } from '../prompts/generateNodeDetails';
+import { getNodeDetailsPrompt, DetailLevel } from '../prompts/generateNodeDetails';
+import { getExpandTreePrompt } from '../prompts/generateTreeExpand';
 import { GenerateTreeRequest, SkillTreeData } from '../../types/backend';
 import { validateSkillTreeData } from '../../utils/jsonValidator';
 import { notifyTaskUpdate } from '../websocket';
@@ -15,8 +16,8 @@ import type { PlanMeta } from '../../types/skillTree';
 import { logger } from '../utils/logger';
 import { enqueueTask, getTaskQueueMode } from '../services/TaskQueueService';
 
-const TASK_TIMEOUT_MS = parseInt(process.env.TREE_GENERATION_TIMEOUT_MS || '300000');
-const TREE_GENERATION_MODE = (process.env.TREE_GENERATION_MODE || 'full').toLowerCase();
+const TASK_TIMEOUT_MS = parseInt(process.env.TREE_GENERATION_TIMEOUT_MS || '1200000');
+const TREE_GENERATION_MODE = process.env.TREE_GENERATION_MODE || 'skeleton';
 const TASK_CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
 
 setInterval(() => {
@@ -61,7 +62,6 @@ function buildPlanMeta(inputs: GenerateTreeRequest): PlanMeta | undefined {
 // 任务状态类型
 type TaskStatus = 'pending' | 'in_progress' | 'streaming' | 'skeleton_ready' | 'node_filled' | 'completed' | 'failed';
 
-// 任务接口
 interface Task {
   id: string;
   status: TaskStatus;
@@ -76,6 +76,10 @@ interface Task {
   cancelled?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  nodeCount?: number;
+  incrementalNodes?: Record<string, any>;
+  incrementalMeta?: { career?: string; summary?: string; version?: string; estimatedMonths?: number; overallObjective?: string; overallKeyResults?: string[]; categories?: any[] };
+  lastDbUpdateAt?: number;
 }
 
 // 任务存储
@@ -130,8 +134,12 @@ async function upsertTaskRow(pool: any, task: Task) {
 
 // 处理任务的函数
 async function processTask(taskId: string) {
+  logger.info('开始处理任务', { taskId });
   const task = tasks.get(taskId);
-  if (!task) return;
+  if (!task) {
+    logger.warn('任务不存在', { taskId });
+    return;
+  }
 
   try {
     task.status = 'in_progress';
@@ -184,7 +192,7 @@ async function processTask(taskId: string) {
         await pool.query(
           `INSERT INTO trees (id, user_id, career, tree_data, partial)
            VALUES ($1, $2, $3, $4, $5)`,
-          [treeId, task.userId, task.inputs.career, JSON.stringify(treeData), 0]
+          [treeId, task.userId, task.inputs.career, JSON.stringify({ ...treeData, _inputs: task.inputs }), 0]
         );
 
         task.status = 'completed';
@@ -199,6 +207,77 @@ async function processTask(taskId: string) {
         return;
       }
 
+      const treeId = uuidv4();
+      task.treeId = treeId;
+      task.incrementalNodes = {};
+      task.incrementalMeta = {};
+      task.nodeCount = 0;
+      task.lastDbUpdateAt = 0;
+      task.updatedAt = new Date();
+      tasks.set(taskId, task);
+
+      const planMeta = buildPlanMeta(task.inputs);
+
+      const incrementalSaveThreshold = 3;
+      const dbUpdateIntervalMs = 2000;
+
+      const saveIncrementalTree = async () => {
+        const nodes = task.incrementalNodes || {};
+        const meta = task.incrementalMeta || {};
+        const nodeCount = Object.keys(nodes).length;
+        if (nodeCount === 0) return;
+
+        const autoEdges: Array<{from: string, to: string, type: string}> = [];
+        const edgeSet = new Set<string>();
+        Object.keys(nodes).forEach(id => {
+          const deps = nodes[id]?.dependencies;
+          if (Array.isArray(deps)) {
+            deps.forEach((depId: string) => {
+              if (nodes[depId]) {
+                const key = `${depId}->${id}`;
+                if (!edgeSet.has(key)) {
+                  edgeSet.add(key);
+                  autoEdges.push({ from: depId, to: id, type: 'prerequisite' });
+                }
+              }
+            });
+          }
+        });
+
+        const partialTree: any = {
+          id: treeId,
+          version: meta.version || '2.0',
+          career: meta.career || task.inputs.career,
+          summary: meta.summary || '正在生成中...',
+          estimatedMonths: meta.estimatedMonths,
+          overallObjective: meta.overallObjective,
+          overallKeyResults: meta.overallKeyResults || [],
+          generatedAt: new Date().toISOString(),
+          planMeta,
+          nodes,
+          edges: autoEdges,
+          categories: meta.categories || [],
+          timeline: [],
+        };
+
+        if (planMeta) partialTree.planMeta = planMeta;
+
+        try {
+          await pool.query(
+            `INSERT INTO trees (id, user_id, career, tree_data, partial)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (id) DO UPDATE SET
+               tree_data = EXCLUDED.tree_data,
+               partial = EXCLUDED.partial,
+               updated_at = CURRENT_TIMESTAMP`,
+            [treeId, task.userId, task.inputs.career, JSON.stringify({ ...partialTree, _inputs: task.inputs }), 1]
+          );
+          logger.info('增量保存节点到数据库', { taskId, treeId, nodeCount });
+        } catch (e) {
+          logger.warn('增量保存失败', { taskId, error: (e as Error).message });
+        }
+      };
+
       const { system, user } = getGenerateTreePrompt(task.inputs);
       const rawTreeData: SkillTreeData = await withTimeout(
         llmService.chatJSONStream(
@@ -212,26 +291,66 @@ async function processTask(taskId: string) {
               task.progress = mapped;
               task.updatedAt = new Date();
               tasks.set(taskId, task);
-              notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase, progress: mapped });
+              notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase, progress: mapped, nodeCount: task.nodeCount });
+            },
+            onMeta: (meta) => {
+              task.incrementalMeta = { ...task.incrementalMeta, ...meta };
+              task.updatedAt = new Date();
+              tasks.set(taskId, task);
+            },
+            onNode: async (nodeId, nodeData) => {
+              if (!task.incrementalNodes) task.incrementalNodes = {};
+              task.incrementalNodes[nodeId] = nodeData;
+              task.nodeCount = Object.keys(task.incrementalNodes).length;
+
+              const now = Date.now();
+              const shouldSave = task.nodeCount % incrementalSaveThreshold === 0
+                || now - (task.lastDbUpdateAt || 0) >= dbUpdateIntervalMs;
+
+              if (shouldSave) {
+                task.lastDbUpdateAt = now;
+                saveIncrementalTree().catch(() => {});
+              }
+
+              notifyTaskUpdate(taskId, {
+                status: 'streaming',
+                userId: task.userId,
+                treeId,
+                nodeId,
+                nodeData,
+                nodeCount: task.nodeCount,
+                progress: task.progress,
+                phase: task.phase || `已生成 ${task.nodeCount} 个节点`,
+              });
+
+              task.phase = `已生成 ${task.nodeCount} 个节点`;
+              task.updatedAt = new Date();
+              tasks.set(taskId, task);
             }
           }
         )
       );
 
       checkCancelled();
+      logger.info('AI 返回原始数据解析成功', { taskId, hasRawData: !!rawTreeData, nodeCount: rawTreeData?.nodes ? Object.keys(rawTreeData.nodes).length : 0 });
       const treeData = validateSkillTreeData(rawTreeData);
-      const planMeta = buildPlanMeta(task.inputs);
+      logger.info('数据验证完成', { taskId, nodeCount: treeData?.nodes ? Object.keys(treeData.nodes).length : 0 });
       if (planMeta) treeData.planMeta = planMeta;
-      const treeId = uuidv4();
       treeData.id = treeId;
       treeData.version = treeData.version || '1.0';
       treeData.generatedAt = new Date().toISOString();
 
+      logger.info('准备最终保存到数据库', { taskId, treeId, career: task.inputs.career });
       await pool.query(
         `INSERT INTO trees (id, user_id, career, tree_data, partial)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [treeId, task.userId, task.inputs.career, JSON.stringify(treeData), 0]
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (id) DO UPDATE SET
+           tree_data = EXCLUDED.tree_data,
+           partial = EXCLUDED.partial,
+           updated_at = CURRENT_TIMESTAMP`,
+        [treeId, task.userId, task.inputs.career, JSON.stringify({ ...treeData, _inputs: task.inputs }), 0]
       );
+      logger.info('数据库最终保存成功', { taskId, treeId });
       setCachedTree(task.inputs, treeData).catch(() => {});
 
       task.status = 'completed';
@@ -239,18 +358,23 @@ async function processTask(taskId: string) {
       task.result = { id: treeId, data: treeData };
       task.progress = 100;
       task.phase = '生成完成';
+      task.nodeCount = Object.keys(treeData.nodes).length;
       task.updatedAt = new Date();
       tasks.set(taskId, task);
-      notifyTaskUpdate(taskId, { status: 'completed', userId: task.userId, treeId, progress: 100, phase: task.phase });
+      notifyTaskUpdate(taskId, { status: 'completed', userId: task.userId, treeId, progress: 100, phase: task.phase, nodeCount: task.nodeCount });
       await upsertTaskRow(pool, task);
       return;
     }
 
     const cachedSkeleton = await getCachedSkeleton(task.inputs);
+    const planMeta = buildPlanMeta(task.inputs);
+    const hasStages = planMeta && planMeta.stages && planMeta.stages.length > 0;
+    const isMini = hasStages;
+
     const skeletonRaw = cachedSkeleton
       ? JSON.parse(JSON.stringify(cachedSkeleton))
       : await (async () => {
-          const { system: skSystem, user: skUser } = getGenerateTreeSkeletonPrompt(task.inputs);
+          const { system: skSystem, user: skUser } = getGenerateTreeSkeletonPrompt(task.inputs, isMini);
           return withTimeout(
             llmService.chatJSONStream(
               skSystem,
@@ -272,29 +396,32 @@ async function processTask(taskId: string) {
 
     checkCancelled();
     const skeleton = validateSkillTreeData(skeletonRaw) as SkillTreeData;
-    const planMeta = buildPlanMeta(task.inputs);
     if (planMeta) skeleton.planMeta = planMeta;
     const treeId = uuidv4();
     skeleton.id = treeId;
     skeleton.version = skeleton.version || '1.0';
     skeleton.generatedAt = new Date().toISOString();
 
+    const treeDataToStore = { ...skeleton, _inputs: task.inputs };
+
     await pool.query(
       `INSERT INTO trees (id, user_id, career, tree_data, partial)
        VALUES ($1, $2, $3, $4, $5)`,
-      [treeId, task.userId, task.inputs.career, JSON.stringify(skeleton), 1]
+      [treeId, task.userId, task.inputs.career, JSON.stringify(treeDataToStore), 1]
     );
     if (!cachedSkeleton) setCachedSkeleton(task.inputs, skeleton).catch(() => {});
 
     task.status = 'skeleton_ready';
     task.treeId = treeId;
     task.progress = 40;
-    task.phase = '树结构就绪，正在填充详情';
+    task.phase = '树结构已生成，正在填充节点详情...';
     task.result = { id: treeId, data: skeleton };
     task.updatedAt = new Date();
     tasks.set(taskId, task);
     notifyTaskUpdate(taskId, { status: 'skeleton_ready', userId: task.userId, treeId, phase: task.phase, progress: task.progress });
+    await upsertTaskRow(pool, task);
 
+    // 继续生成节点详情
     const nodeIds = Object.keys(skeleton.nodes).filter(id => id !== 'meta_growth');
     const batchSize = 4;
     const batches: string[][] = [];
@@ -315,10 +442,20 @@ async function processTask(taskId: string) {
           difficulty: skeleton.nodes[id]?.difficulty || 'beginner',
         }));
 
-        const { system, user } = getNodeDetailsPrompt(task.inputs, nodesMeta);
+        const { system, user } = getNodeDetailsPrompt(task.inputs, nodesMeta, 'core' as DetailLevel);
         const detailsRaw = await withTimeout(llmService.chatJSON(system, user));
 
         const details = Array.isArray(detailsRaw) ? detailsRaw : [];
+        
+        if (details.length < batch.length) {
+          logger.warn('节点详情返回数量不足', { 
+            taskId, 
+            expected: batch.length, 
+            received: details.length,
+            batchIds: batch.join(',')
+          });
+        }
+
         for (const detail of details) {
           checkCancelled();
           const id = detail?.id;
@@ -334,7 +471,7 @@ async function processTask(taskId: string) {
         }
 
         await pool.query(
-          `UPDATE trees SET tree_data = $1, updated_at = NOW() WHERE id = $2`,
+          `UPDATE trees SET tree_data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
           [JSON.stringify(skeleton), treeId]
         );
       } catch (e) {
@@ -352,9 +489,15 @@ async function processTask(taskId: string) {
       }
     }));
 
+    const unfilledCount = nodeIds.length - completedNodes;
+    if (unfilledCount > 0) {
+      logger.warn('部分节点未填充详情', { taskId, unfilledCount, total: nodeIds.length });
+      hadFailures = true;
+    }
+
     await pool.query(
-      `UPDATE trees SET tree_data = $1, partial = $2, updated_at = NOW() WHERE id = $3`,
-      [JSON.stringify(skeleton), hadFailures ? 1 : 0, treeId]
+      `UPDATE trees SET tree_data = $1, partial = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+      [JSON.stringify({ ...skeleton, _inputs: task.inputs }), hadFailures ? 1 : 0, treeId]
     );
 
     task.status = 'completed';
@@ -371,9 +514,12 @@ async function processTask(taskId: string) {
       phase: hadFailures ? '生成完成（部分节点待补全）' : '生成完成',
       message: hadFailures ? '部分节点详情生成失败，可先浏览结构与已填充内容' : undefined
     });
-    await upsertTaskRow(pool, task);
   } catch (error) {
-    logger.error('生成技能树失败', error);
+    logger.error('生成技能树失败', { 
+      taskId, 
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     // 更新任务状态为失败
     task.status = 'failed';
     task.error = error instanceof Error ? error.message : '生成失败';
@@ -494,6 +640,7 @@ export const treeController = {
   async generate(req: Request, res: Response) {
     try {
       const inputs: GenerateTreeRequest = req.body;
+      logger.info('收到生成请求', { inputs });
       
       if (!inputs.major || !inputs.career || typeof inputs.career !== 'string' || inputs.career.trim() === '') {
         return res.status(400).json({ error: '专业和目标职业是必填项' });
@@ -501,7 +648,11 @@ export const treeController = {
 
       // 创建任务
       const taskId = uuidv4();
-      const userId = (req as any).user?.id || 'default';
+      let userId = (req as any).user?.id || 'default';
+      // 对于临时用户，统一用 'default' 作为 user_id，方便查询
+      if (userId && (userId.startsWith('guest_') || userId.startsWith('temp_') || userId.startsWith('device_'))) {
+        userId = 'default';
+      }
       const task: Task = {
         id: taskId,
         status: 'pending',
@@ -514,12 +665,16 @@ export const treeController = {
       const pool = getDb();
       await upsertTaskRow(pool, task);
 
+      const queueMode = getTaskQueueMode();
+      logger.info('任务队列模式', { queueMode, taskId });
       if (getTaskQueueMode() === 'redis') {
         const enqueued = await enqueueTask(taskId);
         if (!enqueued) {
+          logger.info('Redis 队列失败，直接处理', { taskId });
           processTask(taskId).catch((e) => logger.error('任务处理失败', e));
         }
       } else {
+        logger.info('直接处理任务', { taskId });
         processTask(taskId).catch((e) => logger.error('任务处理失败', e));
       }
 
@@ -556,6 +711,7 @@ export const treeController = {
           phase: task.phase,
           preview: task.preview,
           treeId: task.treeId,
+          nodeCount: task.nodeCount,
           attempts: meta.attempts == null ? undefined : (typeof meta.attempts === 'number' ? meta.attempts : parseInt(meta.attempts || '0')),
           maxAttempts: meta.max_attempts == null ? undefined : (typeof meta.max_attempts === 'number' ? meta.max_attempts : parseInt(meta.max_attempts || '0')),
           nextRetryAt: meta.next_retry_at ? String(meta.next_retry_at) : undefined,
@@ -689,6 +845,70 @@ export const treeController = {
       res.json({ success: true, message: '任务已取消' });
     } catch (error) {
       res.status(500).json({ error: '取消任务失败' });
+    }
+  },
+
+  /**
+   * 展开技能树（为已有技能树生成更多节点）
+   */
+  async expand(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const requesterId = (req as any).user?.id || 'default';
+      const pool = getDb();
+
+      const ids = getAllowedUserIds(req);
+      const result = ids.length === 1
+        ? await pool.query('SELECT * FROM trees WHERE id = $1 AND user_id = $2', [id, ids[0]])
+        : await pool.query('SELECT * FROM trees WHERE id = $1 AND (user_id = $2 OR user_id = $3)', [id, ids[0], ids[1]]);
+      const row: any = result.rows[0];
+
+      if (!row) {
+        return res.status(404).json({ error: '技能树不存在' });
+      }
+
+      const rawTree = JSON.parse(row.tree_data);
+      const existingData = validateSkillTreeData(rawTree);
+      const existingNodeIds = Object.keys(existingData.nodes);
+      const inputsRaw = rawTree._inputs || {};
+
+      const inputs: GenerateTreeRequest = {
+        major: inputsRaw.major || '',
+        career: inputsRaw.career || existingData.career,
+        level: inputsRaw.level || 'intermediate',
+        weeklyHours: inputsRaw.weeklyHours || 10,
+        notes: inputsRaw.notes || '',
+        existingSkills: inputsRaw.existingSkills || [],
+        longTermGoal: inputsRaw.longTermGoal || existingData.planMeta?.longTermGoal || '',
+        planMeta: inputsRaw.planMeta || existingData.planMeta as any,
+      };
+
+      const { system, user } = getExpandTreePrompt(inputs, existingData as any, existingNodeIds);
+      const expandRaw = await llmService.chatJSON(system, user);
+
+      const newNodes = expandRaw?.nodes || {};
+      const newEdges = expandRaw?.edges || [];
+
+      if (!newNodes || Object.keys(newNodes).length === 0) {
+        return res.status(400).json({ error: 'AI 未生成新节点，请重试' });
+      }
+
+      Object.assign(existingData.nodes, newNodes);
+      if (Array.isArray(newEdges)) {
+        existingData.edges.push(...newEdges);
+      }
+
+      const treeData = validateSkillTreeData(existingData);
+
+      await pool.query(
+        `UPDATE trees SET tree_data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        [JSON.stringify(treeData), id]
+      );
+
+      res.json({ success: true, treeId: id, data: treeData, newNodes: Object.keys(newNodes), newEdges: newEdges.length });
+    } catch (error) {
+      logger.error('展开技能树失败', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : '展开失败' });
     }
   },
 
@@ -909,7 +1129,7 @@ export const treeController = {
       const ids = getAllowedUserIds(req);
       
       const result = await pool.query(
-        `UPDATE trees SET tree_data = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
+        `UPDATE trees SET tree_data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3`,
         [JSON.stringify(treeData), id, ids[0]]
       );
 
@@ -943,6 +1163,84 @@ export const treeController = {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: '删除失败' });
+    }
+  },
+
+  async fillNodeDetails(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { nodeIds } = req.body as { nodeIds?: string[] };
+      const pool = getDb();
+      const ids = getAllowedUserIds(req);
+      const result = ids.length === 1
+        ? await pool.query('SELECT * FROM trees WHERE id = $1 AND user_id = $2', [id, ids[0]])
+        : await pool.query('SELECT * FROM trees WHERE id = $1 AND (user_id = $2 OR user_id = $3)', [id, ids[0], ids[1]]);
+      const row: any = result.rows[0];
+
+      if (!row) {
+        return res.status(404).json({ error: '技能树不存在' });
+      }
+
+      const rawTree = JSON.parse(row.tree_data);
+      const treeData = validateSkillTreeData(rawTree);
+      const inputsRaw = rawTree._inputs || {};
+
+      const inputs: GenerateTreeRequest = {
+        major: inputsRaw.major || '',
+        career: inputsRaw.career || treeData.career,
+        level: inputsRaw.level || 'intermediate',
+        weeklyHours: inputsRaw.weeklyHours || 10,
+        notes: inputsRaw.notes || '',
+        existingSkills: inputsRaw.existingSkills || [],
+        longTermGoal: inputsRaw.longTermGoal || treeData.planMeta?.longTermGoal || '',
+        planMeta: inputsRaw.planMeta || treeData.planMeta as any,
+      };
+
+      const targetNodeIds = (nodeIds && nodeIds.length > 0)
+        ? nodeIds.filter(nid => treeData.nodes[nid] && nid !== 'meta_growth')
+        : Object.keys(treeData.nodes).filter(nid => nid !== 'meta_growth' && !treeData.nodes[nid]?.resources?.length);
+
+      if (targetNodeIds.length === 0) {
+        return res.json({ success: true, message: '无需填充的节点', filledNodes: [] });
+      }
+
+      const batchSize = 4;
+      const batches: string[][] = [];
+      for (let i = 0; i < targetNodeIds.length; i += batchSize) {
+        batches.push(targetNodeIds.slice(i, i + batchSize));
+      }
+
+      const filledNodes: string[] = [];
+
+      await Promise.allSettled(batches.map(async (batch) => {
+        const nodesMeta = batch.map(nid => ({
+          id: nid,
+          name: treeData.nodes[nid]?.name || nid,
+          category: treeData.nodes[nid]?.category || 'general',
+          difficulty: treeData.nodes[nid]?.difficulty || 'beginner',
+        }));
+
+        const { system, user } = getNodeDetailsPrompt(inputs, nodesMeta, 'full' as DetailLevel);
+        const detailsRaw = await llmService.chatJSON(system, user);
+        const details = Array.isArray(detailsRaw) ? detailsRaw : [];
+
+        for (const detail of details) {
+          const nid = detail?.id;
+          if (!nid || !treeData.nodes[nid]) continue;
+          treeData.nodes[nid] = { ...treeData.nodes[nid], ...detail, id: nid };
+          filledNodes.push(nid);
+        }
+      }));
+
+      await pool.query(
+        `UPDATE trees SET tree_data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        [JSON.stringify({ ...treeData, _inputs: inputs }), id]
+      );
+
+      res.json({ success: true, filledNodes, treeData });
+    } catch (error) {
+      logger.error('填充节点详情失败', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : '填充详情失败' });
     }
   }
 };

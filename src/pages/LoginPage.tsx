@@ -64,7 +64,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           savedState.auth = authState;
           storage.save(savedState);
         }
-        navigate('/tree');
+        navigate(isRegister ? '/generate' : '/tree');
       } catch (fetchErr) {
         clearTimeout(timeoutId);
         if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {

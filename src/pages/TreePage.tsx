@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Download, FileUp, FolderUp, GitBranch, Radar, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, FileUp, FolderUp, GitBranch, Radar, Sparkles, Plus } from 'lucide-react';
 import { useSkillTree } from '../hooks/useSkillTree';
 import { useTaskWebSocket } from '../hooks/useTaskWebSocket';
 import SkillTreeCanvas from '../components/SkillTree/SkillTreeCanvas';
 import SkillNodeDetail from '../components/SkillTree/SkillNodeDetail';
 import AppLayout from '../components/Layout/AppLayout';
+import { TreeSwitcher } from '../components/SkillTree/TreeSwitcher';
 import { SkillNode } from '../types/skillTree';
 import { difyApi } from '../services/difyApi';
 import { storage } from '../services/storage';
 import { createSkillTreeHtmlReport } from '../utils/skillTreeReport';
+import { useAppContext } from '../context/AppContext';
 
 function buildDownloadFileName(career: string, suffix: string, ext: string) {
   const safeCareer = (career || 'skill-tree')
@@ -37,6 +39,7 @@ function triggerDownload(blob: Blob, fileName: string) {
 const TreePage: React.FC = () => {
   const navigate = useNavigate();
   const { treeId } = useParams<{ treeId?: string }>();
+  const { state } = useAppContext();
   const { skillTree, activeNode, setActiveNode, setSkillTree, setError, updateNodeData } = useSkillTree();
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +51,15 @@ const TreePage: React.FC = () => {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const [isMapCollapsed, setIsMapCollapsed] = useState(false);
+  const [isExpanding, setIsExpanding] = useState(false);
+
+  const handleTreeSelect = (newTreeId: string) => {
+    navigate(`/tree/${newTreeId}`);
+  };
+
+  const handleCreateNew = () => {
+    navigate('/generate');
+  };
 
   useEffect(() => {
     const pending = storage.loadPendingTask();
@@ -178,7 +190,7 @@ const TreePage: React.FC = () => {
 
       setSkillTree(result.data);
       setActiveNode(null);
-      storage.saveLastTreeId(result.id);
+      storage.saveLastTreeId(result.id, state.auth?.user?.id);
       setError(null);
       setActionMessage(`已导入 ${result.data.career}，正在切换到新技能树。`);
       navigate(`/tree/${result.id}`, { replace: true });
@@ -192,19 +204,52 @@ const TreePage: React.FC = () => {
     }
   };
 
+  const handleExpand = async () => {
+    if (!skillTree?.id || isExpanding) return;
+
+    setIsExpanding(true);
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      const response = await fetch(`/api/trees/${skillTree.id}/expand`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || '展开失败');
+      }
+
+      const result = await response.json();
+      if (result.data) {
+        setSkillTree(result.data);
+      }
+      setActionMessage(`已展开 ${result.newNodes || 0} 个新节点`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '展开技能树失败';
+      setActionError(message);
+      setError(message);
+    } finally {
+      setIsExpanding(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
     const ensureTreeLoaded = async () => {
       if (treeId && skillTree?.id === treeId) {
         setIsLoading(false);
-        storage.saveLastTreeId(treeId);
+        storage.saveLastTreeId(treeId, state.auth?.user?.id);
         return;
       }
 
       if (!treeId && skillTree?.id) {
         setIsLoading(false);
-        storage.saveLastTreeId(skillTree.id);
+        storage.saveLastTreeId(skillTree.id, state.auth?.user?.id);
         return;
       }
 
@@ -212,22 +257,33 @@ const TreePage: React.FC = () => {
       setLoadError(null);
 
       try {
-        let resolvedTreeId = treeId || storage.loadLastTreeId();
+        let resolvedTreeId = treeId || storage.loadLastTreeId(state.auth?.user?.id);
+        let tree = null;
 
-        if (!resolvedTreeId) {
+        if (resolvedTreeId) {
+          try {
+            tree = await difyApi.getSkillTreeById(resolvedTreeId);
+          } catch (e) {
+            if (treeId) {
+              throw e;
+            }
+            storage.clearLastTreeId(state.auth?.user?.id);
+            resolvedTreeId = null;
+          }
+        }
+
+        if (!tree) {
           const list = await difyApi.listTrees();
           resolvedTreeId = list.trees[0]?.id || null;
+          if (!resolvedTreeId) {
+            return;
+          }
+          tree = await difyApi.getSkillTreeById(resolvedTreeId);
         }
-
-        if (!resolvedTreeId) {
-          return;
-        }
-
-        const tree = await difyApi.getSkillTreeById(resolvedTreeId);
         if (cancelled) return;
 
         setSkillTree(tree);
-        storage.saveLastTreeId(tree.id);
+        storage.saveLastTreeId(tree.id, state.auth?.user?.id);
 
         if (!treeId) {
           navigate(`/tree/${tree.id}`, { replace: true });
@@ -250,7 +306,7 @@ const TreePage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [treeId, skillTree?.id, navigate, setError, setSkillTree]);
+  }, [treeId, skillTree?.id, navigate, setError, setSkillTree, state.auth?.user?.id]);
 
   if (isLoading) {
     return (
@@ -267,8 +323,8 @@ const TreePage: React.FC = () => {
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center">
         <div className="text-center space-y-4">
-          <p className="text-app-muted">{loadError || '尚未生成技能树'}</p>
-          <Link to="/generate" className="text-skill-core font-bold hover:underline">去生成 →</Link>
+          <p className="text-app-muted">{loadError || '还没有可展示的技能树'}</p>
+          <Link to="/generate" className="text-skill-core font-bold hover:underline">去生成第一张地图 →</Link>
         </div>
       </div>
     );
@@ -294,7 +350,15 @@ const TreePage: React.FC = () => {
 
         {/* 顶部悬浮信息栏 - 改为半透明紧凑设计 */}
         <div className="pointer-events-none absolute left-6 top-6 z-10 max-w-md">
-          <div className="pointer-events-auto">
+          <div className="pointer-events-auto flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <TreeSwitcher
+                currentTreeId={skillTree?.id}
+                onTreeSelect={handleTreeSelect}
+                onCreateNew={handleCreateNew}
+              />
+            </div>
+
             {isMapCollapsed ? (
               <button
                 type="button"
@@ -407,6 +471,17 @@ const TreePage: React.FC = () => {
                       <FolderUp size={16} />
                       {isImporting ? '正在导入...' : '导入数据包'}
                     </button>
+                    {skillTree.planMeta && (
+                      <button
+                        type="button"
+                        onClick={handleExpand}
+                        disabled={isExpanding}
+                        className="btn-primary inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Plus size={16} />
+                        {isExpanding ? '正在展开...' : '展开更多节点'}
+                      </button>
+                    )}
                   </div>
                   {(actionError || actionMessage) && (
                     <p className={`mt-3 text-xs ${actionError ? 'text-status-locked' : 'text-status-completed'}`}>
@@ -424,7 +499,16 @@ const TreePage: React.FC = () => {
           <div className="absolute inset-y-0 right-0 z-20 w-full sm:w-[400px]">
             <SkillNodeDetail 
               node={activeNode} 
+              treeId={treeId || skillTree?.id}
               onClose={() => setActiveNode(null)} 
+              onNodeUpdated={(nodeId, updatedNode) => {
+                if (skillTree) {
+                  setSkillTree({
+                    ...skillTree,
+                    nodes: { ...skillTree.nodes, [nodeId]: updatedNode }
+                  });
+                }
+              }}
             />
           </div>
         )}

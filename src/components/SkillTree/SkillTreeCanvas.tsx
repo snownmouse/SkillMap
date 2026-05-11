@@ -38,7 +38,7 @@ const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({ data, onNodeClick }) 
           progress: node.progress,
           status: node.status,
           category: node.category,
-          hasConversations: node.conversations.length > 0,
+          hasConversations: node.conversations && node.conversations.length > 0,
           partial: !isFilled(node)
         }
       });

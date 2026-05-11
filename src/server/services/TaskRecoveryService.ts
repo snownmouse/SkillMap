@@ -9,9 +9,9 @@ export async function failStaleTasks(): Promise<void> {
   try {
     const res = await pool.query(
       `UPDATE tasks
-       SET status = 'failed', error = $1, updated_at = $2, lease_owner = NULL, lease_expires_at = NULL, next_retry_at = NULL, last_finished_at = $2
-       WHERE status IN ('pending','in_progress') AND updated_at < $3`,
-      ['任务因服务重启或中断失败，请重新发起', nowStr, cutoff]
+       SET status = 'failed', error = $1, updated_at = $2, lease_owner = NULL, lease_expires_at = NULL, next_retry_at = NULL, last_finished_at = $3
+       WHERE status IN ('pending','in_progress') AND updated_at < $4`,
+      ['任务因服务重启或中断失败，请重新发起', nowStr, nowStr, cutoff]
     );
     if ((res?.rowCount || 0) > 0) {
       logger.warn('已标记过期任务为失败', { count: res.rowCount, cutoff });

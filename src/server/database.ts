@@ -15,7 +15,7 @@ function createSqlitePoolAdapter(sqliteDb: any) {
   const normalizeSql = (sql: string) => {
     let out = sql;
     out = out.replace(/\$\d+/g, '?');
-    out = out.replace(/\bNOW\(\)\b/g, 'CURRENT_TIMESTAMP');
+    out = out.replace(/\bNOW\s*\(\s*\)/gi, 'CURRENT_TIMESTAMP');
     return out;
   };
 

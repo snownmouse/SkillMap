@@ -6,6 +6,7 @@ import AppLayout from '../components/Layout/AppLayout';
 import TimelineView from '../components/Timeline/TimelineView';
 import { difyApi } from '../services/difyApi';
 import { storage } from '../services/storage';
+import { useAppContext } from '../context/AppContext';
 
 /**
  * 时间线页面
@@ -13,6 +14,7 @@ import { storage } from '../services/storage';
 const TimelinePage: React.FC = () => {
   const navigate = useNavigate();
   const { treeId } = useParams<{ treeId?: string }>();
+  const { state } = useAppContext();
   const { skillTree, setSkillTree, setError } = useSkillTree();
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -23,13 +25,13 @@ const TimelinePage: React.FC = () => {
     const ensureTreeLoaded = async () => {
       if (treeId && skillTree?.id === treeId) {
         setIsLoading(false);
-        storage.saveLastTreeId(treeId);
+        storage.saveLastTreeId(treeId, state.auth?.user?.id);
         return;
       }
 
       if (!treeId && skillTree?.id) {
         setIsLoading(false);
-        storage.saveLastTreeId(skillTree.id);
+        storage.saveLastTreeId(skillTree.id, state.auth?.user?.id);
         return;
       }
 
@@ -37,22 +39,33 @@ const TimelinePage: React.FC = () => {
       setLoadError(null);
 
       try {
-        let resolvedTreeId = treeId || storage.loadLastTreeId();
+        let resolvedTreeId = treeId || storage.loadLastTreeId(state.auth?.user?.id);
+        let tree = null;
 
-        if (!resolvedTreeId) {
+        if (resolvedTreeId) {
+          try {
+            tree = await difyApi.getSkillTreeById(resolvedTreeId);
+          } catch (e) {
+            if (treeId) {
+              throw e;
+            }
+            storage.clearLastTreeId(state.auth?.user?.id);
+            resolvedTreeId = null;
+          }
+        }
+
+        if (!tree) {
           const list = await difyApi.listTrees();
           resolvedTreeId = list.trees[0]?.id || null;
+          if (!resolvedTreeId) {
+            return;
+          }
+          tree = await difyApi.getSkillTreeById(resolvedTreeId);
         }
-
-        if (!resolvedTreeId) {
-          return;
-        }
-
-        const tree = await difyApi.getSkillTreeById(resolvedTreeId);
         if (cancelled) return;
 
         setSkillTree(tree);
-        storage.saveLastTreeId(tree.id);
+        storage.saveLastTreeId(tree.id, state.auth?.user?.id);
 
         if (!treeId) {
           navigate(`/tree/${tree.id}/timeline`, { replace: true });
@@ -75,7 +88,7 @@ const TimelinePage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [treeId, skillTree?.id, navigate, setError, setSkillTree]);
+  }, [treeId, skillTree?.id, navigate, setError, setSkillTree, state.auth?.user?.id]);
 
   if (isLoading) {
     return (
@@ -92,8 +105,8 @@ const TimelinePage: React.FC = () => {
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center">
         <div className="text-center space-y-4">
-          <p className="text-app-muted">{loadError || '尚未生成技能树'}</p>
-          <Link to="/generate" className="text-skill-core font-bold hover:underline">去生成 →</Link>
+          <p className="text-app-muted">{loadError || '还没有可展示的成长时间线'}</p>
+          <Link to="/generate" className="text-skill-core font-bold hover:underline">去生成第一张地图 →</Link>
         </div>
       </div>
     );

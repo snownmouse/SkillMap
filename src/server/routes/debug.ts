@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { llmService } from '../llmService';
 import { getPool } from '../database';
 import { messageBufferService } from '../services';
+import { memoryCache } from '../services/RedisService';
 
 export const debugRouter = Router();
 
@@ -73,5 +74,15 @@ debugRouter.get('/queue-status', (req: Request, res: Response) => {
     res.json({ status });
   } catch (error) {
     res.status(500).json({ error: '获取队列状态失败' });
+  }
+});
+
+debugRouter.post('/clear-cache', (req: Request, res: Response) => {
+  try {
+    const beforeSize = memoryCache.size;
+    memoryCache.clear();
+    res.json({ success: true, cleared: beforeSize });
+  } catch (error) {
+    res.status(500).json({ error: '清除缓存失败' });
   }
 });

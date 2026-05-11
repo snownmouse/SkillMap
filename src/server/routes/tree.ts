@@ -16,7 +16,11 @@ export const treeRouter = Router();
 treeRouter.use(optionalAuth);
 
 treeRouter.post('/generate', llmRateLimiter, validateBody(generateSchema), treeController.generate);
+treeRouter.post('/:id/expand', llmRateLimiter, treeController.expand);
+treeRouter.post('/:id/fill-details', llmRateLimiter, treeController.fillNodeDetails);
 treeRouter.get('/task/:taskId', treeController.getTaskStatus);
+treeRouter.post('/task/:taskId/retry', treeController.retryTask);
+treeRouter.post('/task/:taskId/cancel', treeController.cancelTask);
 treeRouter.get('/', treeController.list);
 treeRouter.post('/import', treeController.import);
 treeRouter.post('/:id/export', treeController.export);

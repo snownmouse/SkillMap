@@ -60,7 +60,6 @@ export function validateSkillTreeData(data: any): SkillTreeData {
     timeline: Array.isArray(data.timeline) ? data.timeline : []
   };
 
-  // 节点校验
   if (data.nodes && typeof data.nodes === 'object') {
     Object.keys(data.nodes).forEach(id => {
       const node = data.nodes[id];
@@ -100,6 +99,24 @@ export function validateSkillTreeData(data: any): SkillTreeData {
             ? node.jd_frequency
             : undefined,
       };
+    });
+  }
+
+  if (validated.edges.length === 0 && Object.keys(validated.nodes).length > 0) {
+    const edgeSet = new Set<string>();
+    Object.keys(validated.nodes).forEach(id => {
+      const node = validated.nodes[id];
+      if (Array.isArray(node.dependencies)) {
+        node.dependencies.forEach((depId: string) => {
+          if (validated.nodes[depId]) {
+            const key = `${depId}->${id}`;
+            if (!edgeSet.has(key)) {
+              edgeSet.add(key);
+              validated.edges.push({ from: depId, to: id, type: 'prerequisite' });
+            }
+          }
+        });
+      }
     });
   }
 

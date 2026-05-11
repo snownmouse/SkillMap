@@ -23,7 +23,7 @@ export abstract class OpenAICompatibleProvider implements ILLMProvider {
     protected model: string,
     protected temperature: number,
     protected maxTokens: number,
-    protected requestTimeoutMs: number = 90000
+    protected requestTimeoutMs: number = 600000
   ) {
     // 初始化 OpenAI 客户端
     this.client = new OpenAI({

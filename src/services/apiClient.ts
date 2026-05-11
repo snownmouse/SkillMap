@@ -402,4 +402,15 @@ export const apiClient = {
   async getTimelineStats(treeId: string): Promise<any> {
     return fetchApi(`/api/trees/${treeId}/timeline/stats`);
   },
+
+  async fillNodeDetails(treeId: string, nodeIds?: string[]): Promise<{ success: boolean; filledNodes: string[]; treeData: SkillTreeData }> {
+    const result = await fetchApi<{ success: boolean; filledNodes: string[]; treeData: SkillTreeData }>(`/api/trees/${treeId}/fill-details`, {
+      method: 'POST',
+      body: JSON.stringify({ nodeIds: nodeIds || [] }),
+    });
+    if (result.success) {
+      cache.delete(`tree_${treeId}`);
+    }
+    return result;
+  },
 };

@@ -13,6 +13,7 @@ interface AppState {
   isGenerating: boolean;
   isChatLoading: boolean;
   error: string | null;
+  authHydrated: boolean;
   auth?: {
     token: string | null;
     refreshToken?: string | null;
@@ -33,6 +34,7 @@ type AppAction =
   | { type: 'SET_CHAT_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'LOAD_FROM_STORAGE'; payload: AppState }
+  | { type: 'HYDRATE_COMPLETE' }
   | { type: 'ADD_TIMELINE_EVENT'; payload: TimelineEvent }
   | { type: 'UPDATE_NODE_PENDING_MESSAGE'; payload: { nodeId: string; message: string | null } }
   | { type: 'UPDATE_NODE_COACHING'; payload: { nodeId: string; latestCoaching: CoachSnapshot | null; pendingMessage?: string | null } };
@@ -44,6 +46,7 @@ const initialState: AppState = {
   isGenerating: false,
   isChatLoading: false,
   error: null,
+  authHydrated: false,
   auth: null,
 };
 
@@ -135,7 +138,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'CLEAR_AUTH':
       return { ...state, auth: null };
     case 'LOAD_FROM_STORAGE':
-      return { ...state, ...action.payload };
+      return { ...state, ...action.payload, authHydrated: true };
+    case 'HYDRATE_COMPLETE':
+      return { ...state, authHydrated: true };
     case 'ADD_TIMELINE_EVENT':
       if (!state.skillTree) return state;
       return {
@@ -179,7 +184,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const savedState = storage.load();
     if (savedState) {
       dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
+      return;
     }
+    dispatch({ type: 'HYDRATE_COMPLETE' });
   }, []);
 
   // 自动保存

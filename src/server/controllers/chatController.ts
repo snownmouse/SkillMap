@@ -181,7 +181,7 @@ export const chatController = {
           }
 
           await client.query(
-            `UPDATE trees SET tree_data = $1, updated_at = NOW() WHERE id = $2`,
+            `UPDATE trees SET tree_data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
             [JSON.stringify(treeData), treeId]
           );
 

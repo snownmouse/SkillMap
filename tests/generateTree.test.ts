@@ -123,7 +123,7 @@ describe('getGenerateTreePrompt', () => {
 
     const { system } = getGenerateTreePrompt(inputs);
 
-    expect(system).toContain('节点数量：15-25个');
+    expect(system).toContain('节点数量：25-40个');
     expect(system).toContain('estimatedHours 在 10-100 之间');
     expect(system).toContain('dependencies 必须引用已存在的 node id');
   });
@@ -187,11 +187,11 @@ describe('getGenerateTreePrompt', () => {
     const { system } = getGenerateTreePrompt(inputs);
 
     const requiredFields = [
-      'id', 'name', 'description', 'whyItMatters', 'category', 
+      'id', 'name', 'description', 'whyItMatters', 'category',
       'difficulty', 'bloomLevel', 'status', 'progress', 'dependencies',
       'learningObjectives', 'deliverables', 'resources', 'milestone',
-      'estimatedHours', 'practiceTips', 'steps', 'tools', 
-      'commonProblems', 'pitfalls', 'microMilestones', 
+      'estimatedHours', 'practiceTips', 'steps', 'tools',
+      'commonProblems', 'pitfalls', 'microMilestones',
       'masteryCriteria', 'unlockThreshold'
     ];
 
@@ -255,7 +255,7 @@ describe('getGenerateTreePrompt', () => {
   });
 
   test('should handle all level values', () => {
-    const levels: Array<'zero' | 'basic' | 'intermediate' | 'advanced'> = 
+    const levels: Array<'zero' | 'basic' | 'intermediate' | 'advanced'> =
       ['zero', 'basic', 'intermediate', 'advanced'];
 
     levels.forEach(level => {
