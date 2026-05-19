@@ -3,9 +3,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../database';
 import { llmService } from '../llmService';
 import { getCheckinChatPrompt } from '../prompts/checkinChat';
+import { getChatSummaryPrompt } from '../prompts/chatSummary';
+import { getLearningSuggestionPrompt } from '../prompts/learningSuggestion';
 import { ChatRequest, ChatResponse } from '../../types/backend';
 import { BloomLevel, CoachSnapshot, KolbStage } from '../../types/skillTree';
 import { getAllowedUserIds } from '../utils/auth';
+import { modelRegistry } from '../agents';
+import { ILLMProvider } from '../llmProviders/base';
+
+const COACH_ENABLED = process.env.ORCHESTRATOR_ENABLED !== 'false';
+
+function getCoachProvider(): ILLMProvider | undefined {
+  return COACH_ENABLED ? modelRegistry.getCoach() : undefined;
+}
 
 async function withClient<T>(pool: any, fn: (client: any) => Promise<T>): Promise<T> {
   if (pool && typeof pool.connect === 'function') {
@@ -139,7 +149,11 @@ export const chatController = {
         treeSummary
       });
 
-      const aiResult = normalizeChatResult(await llmService.chatJSON(system, user), nodeId, node.progress);
+      const aiResult = normalizeChatResult(
+        await llmService.chatJSON(system, user, getCoachProvider()),
+        nodeId,
+        node.progress
+      );
       const progressUpdate = aiResult.progressUpdate;
 
       // 存储消息
@@ -252,6 +266,122 @@ export const chatController = {
       });
     } catch (error) {
       res.status(500).json({ error: '获取历史失败' });
+    }
+  },
+
+  async getSummary(req: Request, res: Response) {
+    try {
+      const { treeId, nodeId } = req.params;
+      const pool = getDb();
+      const ids = getAllowedUserIds(req);
+      const treeResult = ids.length === 1
+        ? await pool.query('SELECT * FROM trees WHERE id = $1 AND user_id = $2', [treeId, ids[0]])
+        : await pool.query('SELECT * FROM trees WHERE id = $1 AND (user_id = $2 OR user_id = $3)', [treeId, ids[0], ids[1]]);
+      const treeRow: any = treeResult.rows[0];
+      if (!treeRow) return res.status(404).json({ error: '技能树不存在' });
+
+      const treeData = JSON.parse(treeRow.tree_data);
+      const node = treeData.nodes[nodeId];
+      if (!node) return res.status(404).json({ error: '节点不存在' });
+
+      const historyResult = await pool.query(
+        `SELECT role, content FROM chat_messages
+         WHERE tree_id = $1 AND node_id = $2
+         ORDER BY created_at ASC`,
+        [treeId, nodeId]
+      );
+      const historyRows: any[] = historyResult.rows;
+      if (historyRows.length === 0) {
+        return res.json({ summary: null, message: '暂无对话记录，无法生成摘要' });
+      }
+
+      const conversationHistory = historyRows.map(h => `${h.role === 'user' ? '用户' : 'AI'}: ${h.content}`).join('\n');
+      const treeSummary = `职业: ${treeData.career}, 总结: ${treeData.summary}`;
+
+      const { system, user } = getChatSummaryPrompt({
+        nodeId,
+        nodeName: node.name,
+        nodeDescription: node.description || '',
+        conversationHistory,
+        currentProgress: node.progress,
+        difficulty: node.difficulty || 'beginner',
+        treeSummary,
+        isSummaryNode: nodeId === 'meta_growth'
+      });
+
+      const aiResult = await llmService.chatJSON(system, user, getCoachProvider());
+      res.json(aiResult);
+    } catch (error) {
+      console.error('生成摘要失败:', error);
+      res.status(500).json({ error: '生成摘要失败' });
+    }
+  },
+
+  async getLearningSuggestions(req: Request, res: Response) {
+    try {
+      const { treeId, nodeId } = req.params;
+      const pool = getDb();
+      const ids = getAllowedUserIds(req);
+      const treeResult = ids.length === 1
+        ? await pool.query('SELECT * FROM trees WHERE id = $1 AND user_id = $2', [treeId, ids[0]])
+        : await pool.query('SELECT * FROM trees WHERE id = $1 AND (user_id = $2 OR user_id = $3)', [treeId, ids[0], ids[1]]);
+      const treeRow: any = treeResult.rows[0];
+      if (!treeRow) return res.status(404).json({ error: '技能树不存在' });
+
+      const treeData = JSON.parse(treeRow.tree_data);
+      const node = treeData.nodes[nodeId];
+      if (!node) return res.status(404).json({ error: '节点不存在' });
+
+      const treeSummary = `职业: ${treeData.career}, 总结: ${treeData.summary}`;
+
+      const nodeEntries = Object.entries(treeData.nodes) as [string, any][];
+      const totalProgress = nodeEntries.reduce((sum: number, [, n]: [string, any]) => sum + (n.progress || 0), 0) / Math.max(nodeEntries.length, 1);
+      const nodeProgressSummary = nodeEntries
+        .filter(([, n]: [string, any]) => n.progress > 0)
+        .map(([id, n]: [string, any]) => `${n.name}: ${n.progress}%`)
+        .join(', ');
+
+      const completedSkills = nodeEntries
+        .filter(([, n]: [string, any]) => n.status === 'completed')
+        .map(([, n]: [string, any]) => n.name);
+
+      let recentConversationSummary = '';
+      try {
+        const historyResult = await pool.query(
+          `SELECT role, content FROM chat_messages
+           WHERE tree_id = $1 AND node_id = $2
+           ORDER BY created_at DESC LIMIT 6`,
+          [treeId, nodeId]
+        );
+        if (historyResult.rows.length > 0) {
+          recentConversationSummary = historyResult.rows.map((h: any) => `${h.role === 'user' ? '用户' : 'AI'}: ${h.content}`).join('\n');
+        }
+      } catch {}
+
+      const { system, user } = getLearningSuggestionPrompt({
+        nodeId,
+        nodeName: node.name,
+        nodeDescription: node.description || '',
+        currentProgress: node.progress,
+        difficulty: node.difficulty || 'beginner',
+        steps: node.steps?.map((s: any) => s.title),
+        tools: node.tools?.map((t: any) => t.name),
+        commonProblems: node.commonProblems?.map((p: any) => p.title),
+        pitfalls: node.pitfalls?.map((p: any) => p.title),
+        microMilestones: node.microMilestones,
+        treeSummary,
+        totalTreeProgress: totalProgress,
+        nodeProgressSummary,
+        userAbilities: completedSkills.join(', ') || undefined,
+        recentConversationSummary: recentConversationSummary || undefined,
+        isSummaryNode: nodeId === 'meta_growth'
+      });
+
+      const aiResult = await llmService.chatJSON(system, user, getCoachProvider());
+      res.json(aiResult);
+    } catch (error) {
+      console.error('生成学习建议失败:', error);
+      res.status(500).json({ error: '生成学习建议失败' });
     }
   }
 };

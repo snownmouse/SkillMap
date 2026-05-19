@@ -1,6 +1,9 @@
 import { GenerateTreeRequest } from '../../types/backend';
 
-export function getGenerateTreePrompt(inputs: GenerateTreeRequest) {
+export function getGenerateTreePrompt(
+  inputs: GenerateTreeRequest,
+  designInstructionsText?: string
+) {
   const planMeta = (inputs as any).planMeta && typeof (inputs as any).planMeta === 'object' ? (inputs as any).planMeta : undefined;
   const selectedStage = Array.isArray(planMeta?.stages)
     ? (planMeta.selectedStageId
@@ -15,15 +18,17 @@ export function getGenerateTreePrompt(inputs: GenerateTreeRequest) {
   const nodeCountText = selectedStage ? '至少20-30个（仅覆盖本阶段目标）' : '至少30-50个';
   const planningContext = selectedStage || selectedPath || (typeof inputs.longTermGoal === 'string' && inputs.longTermGoal.trim())
     ? `
-## 路径与阶段约束（重要）
+## 路径与阶段约束
 - 长期目标：${(typeof inputs.longTermGoal === 'string' && inputs.longTermGoal.trim()) ? inputs.longTermGoal.trim() : (planMeta?.longTermGoal || inputs.career)}
 - 当前阶段：${selectedStage ? `${selectedStage.title}（${selectedStage.objective}）` : '未指定'}
 - 当前阶段KR：${selectedStage?.keyResults ? JSON.stringify(selectedStage.keyResults) : '未指定'}
 - 用户选择路线：${selectedPath ? `${selectedPath.name}（${selectedPath.description}）` : '未指定'}
-- 只生成"当前阶段"所需的技能树，不要提前铺开后续阶段才需要的高级节点。`
+- 只生成"当前阶段"所需的技能树，不要提前铺开后续阶段`
     : '';
 
-  const system = `你是职业技能树设计师，遵循循证学习理论与中西融合生涯教育理念，为用户构建科学学习路径。
+  const diSection = designInstructionsText ? `\n## 中国特色生涯设计指令\n${designInstructionsText}\n` : '';
+
+  const system = `你是职业技能树设计师，遵循循证学习理念为用户构建科学学习路径。
 
 ## 用户信息
 专业：${inputs.major}
@@ -34,32 +39,29 @@ export function getGenerateTreePrompt(inputs: GenerateTreeRequest) {
 已掌握技能：${inputs.existingSkills?.join(', ') || '无'}
 ${planningContext}
 
-## 理论框架（指导设计，不需在输出中复述）
+## 设计指令（严格遵循）
 
-### 学习科学
-1. Bloom认知层级：节点需覆盖记忆→理解→应用→分析→评价→创造六层递进
-2. 建构主义：新技能需与已有知识建立联系，dependencies体现建构逻辑
-3. 连接主义：核心技能形成主路径，专精方向形成分支，通用技能跨域连接
-4. 认知负荷：节点数${nodeCountText}，每节点10-100小时，复杂技能拆分
-5. OKR：milestone格式"【O】目标 | 【KR】量化结果"
-6. 刻意练习：resources中practice类型≥30%，支持"专注-反馈-调整"循环
-7. 掌握学习：每个节点定义minimum/proficient/mastery三级标准
+### 认知层级
+每节点标注bloomLevel：记忆→理解→应用→分析→评价→创造，整体覆盖六层递进
 
-### 生涯教育理念
-8. 实践导向：知行合一，在真实场景中锤炼能力
-9. 传统文化：自强不息、厚德载物、精益求精
-10. 现代教育：立德树人、终身学习、多元发展
+### 节点结构
+- 新技能与已有知识建立联系，dependencies体现前置依赖
+- 核心技能形成主路径，专精方向形成分支，通用技能跨域连接
+- 节点数${nodeCountText}，核心8-12个，专精10-15个，通用5-8个
+- 复杂技能拆分为子节点，每节点10-100小时
 
----
-
+### 练习与评估
+- resources中practice类型≥30%，支持"专注→反馈→调整→挑战"循环
+- 每节点定义minimum/proficient/mastery三级掌握标准
+- 根节点3-5个，深度4-6层，必须有分支非线链
+${diSection}
 ## 输出要求
-【重要】输出完整有效的JSON，不要输出其他文字。JSON必须能被JSON.parse解析，不能截断。
-每个节点像可直接阅读的学习卡片：说明为什么学、怎么学、学完能交付什么、常见坑是什么。
+输出完整有效JSON，不要输出其他文字。每个节点像可直接阅读的学习卡片。
 
 【绝对要求】
 1. nodes数量必须达到${nodeCountText}，尽可能接近上限
 2. edges数组写[]，系统从dependencies自动生成连线
-3. 如果输出被截断，整个输出无效
+3. 节点说明具体，避免"提升能力""理解知识"等泛表述
 
 ## JSON格式
 {
@@ -112,16 +114,7 @@ ${planningContext}
     {"id": "general", "name": "通用技能", "description": "跨领域能力", "color": "#9B59B6", "order": 3}
   ],
   "timeline": []
-}
-
-## 设计规则
-1. 节点数${nodeCountText}，核心8-12个，专精10-15个，通用5-8个
-2. dependencies引用已存在node id，不形成循环
-3. 已有技能标记status:"completed", progress:100
-4. 无前置依赖→"available"，有前置→"locked"
-5. 相邻难度节点形成认知递进路径
-6. 节点说明要具体，避免"提升能力""理解知识"等泛表述
-7. 树状结构必须有分支，不是线性链，根节点3-5个，深度4-6层`;
+}`;
 
   const user = `请为我生成详细的职业技能树，请同时考虑我的个人发展和职业成长需求。`;
 

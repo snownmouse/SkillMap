@@ -5,9 +5,6 @@ interface ChatMessageProps {
   message: ChatMessage;
 }
 
-/**
- * 消息气泡组件
- */
 const ChatMessageItem: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
   const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -16,17 +13,16 @@ const ChatMessageItem: React.FC<ChatMessageProps> = ({ message }) => {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[85%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-        <div 
+        <div
           className={`p-3 text-sm leading-relaxed relative ${
-            isUser 
-              ? 'bg-[#FAF5ED] text-app-text border border-app-border rounded-[20px] rounded-tr-[4px] shadow-[2px_2px_8px_rgba(214,176,165,0.15)] font-hand text-lg' 
+            isUser
+              ? 'bg-[#FAF5ED] text-app-text border border-app-border rounded-[20px] rounded-tr-[4px] shadow-[2px_2px_8px_rgba(214,176,165,0.15)] font-hand text-lg'
               : 'bg-[rgba(255,250,240,0.8)] text-app-text border border-[rgba(214,176,165,0.2)] rounded-[2px] rounded-br-[20px] shadow-[1px_3px_10px_rgba(214,176,165,0.1)]'
           }`}
         >
           {message.content}
         </div>
-        
-        {/* 进度更新提示 */}
+
         {message.metadata?.progressUpdate && (
           <div className="mt-2 px-3 py-1 bg-status-inProgress/10 border border-status-inProgress/30 rounded-full flex items-center space-x-2 animate-scale-in">
             <span className="text-[10px] font-bold text-status-inProgress uppercase tracking-tight">🌱 成长印记</span>
@@ -64,6 +60,20 @@ const ChatMessageItem: React.FC<ChatMessageProps> = ({ message }) => {
               <div className="rounded-2xl border border-[rgba(156,180,179,0.35)] bg-[rgba(156,180,179,0.12)] px-3 py-2">
                 <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-status-completed">下一挑战</div>
                 <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.nextChallenge}</p>
+              </div>
+            )}
+
+            {coachMeta.growthMindsetPhrase && (
+              <div className="rounded-2xl border border-[rgba(156,180,179,0.25)] bg-[rgba(156,180,179,0.08)] px-3 py-2">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-status-completed">成长鼓励</div>
+                <p className="mt-1 text-sm leading-6 text-app-text italic">{coachMeta.growthMindsetPhrase}</p>
+              </div>
+            )}
+
+            {coachMeta.nextHook && (
+              <div className="rounded-2xl border border-[rgba(214,176,165,0.25)] bg-[rgba(255,250,240,0.5)] px-3 py-2">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted">继续探索</div>
+                <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.nextHook}</p>
               </div>
             )}
           </div>

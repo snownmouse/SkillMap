@@ -15,14 +15,53 @@ import { cleanupStaleTasks } from '../middleware/security';
 import type { PlanMeta } from '../../types/skillTree';
 import { logger } from '../utils/logger';
 import { enqueueTask, getTaskQueueMode } from '../services/TaskQueueService';
+import { modelRegistry, OrchestratorAgent, ChineseDimensionScore } from '../agents';
 
 const TASK_TIMEOUT_MS = parseInt(process.env.TREE_GENERATION_TIMEOUT_MS || '1200000');
 const TREE_GENERATION_MODE = process.env.TREE_GENERATION_MODE || 'skeleton';
 const TASK_CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
+const ORCHESTRATOR_ENABLED = process.env.ORCHESTRATOR_ENABLED !== 'false';
 
 setInterval(() => {
   cleanupStaleTasks(tasks);
 }, TASK_CLEANUP_INTERVAL_MS);
+
+function extractDimensionScores(inputs: GenerateTreeRequest): ChineseDimensionScore[] {
+  const raw = (inputs as any).dimensionScores;
+  if (Array.isArray(raw) && raw.length > 0) return raw;
+  if (typeof raw === 'object' && raw !== null) {
+    return Object.entries(raw)
+      .filter(([_, v]) => typeof v === 'number')
+      .map(([k, v]) => ({ dimensionId: k as any, score: v as number }));
+  }
+  return [];
+}
+
+function generateDesignInstructions(
+  inputs: GenerateTreeRequest
+): { designInstructionsText: string; designInstructions: any; ancientQuote: string; nationalAlignmentSummary: string; narrativeSummary: string } | null {
+  if (!ORCHESTRATOR_ENABLED) return null;
+
+  const dimensionScores = extractDimensionScores(inputs);
+  if (dimensionScores.length === 0) return null;
+
+  const planMeta = (inputs as any).planMeta;
+  const selectedPath = planMeta?.paths?.find((p: any) => p.id === planMeta?.selectedPathId);
+
+  try {
+    const orchestrator = new OrchestratorAgent();
+    return orchestrator.execute({
+      profession: inputs.major,
+      careerGoal: inputs.career,
+      level: inputs.level as 'beginner' | 'intermediate' | 'advanced',
+      dimensions: dimensionScores,
+      selectedPath: selectedPath as any,
+    });
+  } catch (e) {
+    logger.warn('编排者生成设计指令失败', { error: (e as Error).message });
+    return null;
+  }
+}
 
 function buildExportFileName(career: string, suffix: string) {
   const safeCareer = (career || 'skill-tree')
@@ -152,6 +191,22 @@ async function processTask(taskId: string) {
     const pool = getDb();
     await upsertTaskRow(pool, task);
 
+    const orchOutput = generateDesignInstructions(task.inputs);
+    if (orchOutput) {
+      logger.info('编排者生成设计指令', { taskId, narrativeSummary: orchOutput.narrativeSummary });
+      task.phase = orchOutput.nationalAlignmentSummary || '已分析你的发展方向';
+      task.progress = 8;
+      task.updatedAt = new Date();
+      tasks.set(taskId, task);
+      notifyTaskUpdate(taskId, {
+        status: 'in_progress',
+        userId: task.userId,
+        phase: task.phase,
+        progress: 8,
+        message: orchOutput.ancientQuote,
+      });
+    }
+
     let previewBuffer = '';
     const pushPreview = (delta: string) => {
       previewBuffer = (previewBuffer + delta).slice(-200);
@@ -278,7 +333,7 @@ async function processTask(taskId: string) {
         }
       };
 
-      const { system, user } = getGenerateTreePrompt(task.inputs);
+      const { system, user } = getGenerateTreePrompt(task.inputs, orchOutput?.designInstructionsText);
       const rawTreeData: SkillTreeData = await withTimeout(
         llmService.chatJSONStream(
           system,
@@ -327,7 +382,9 @@ async function processTask(taskId: string) {
               task.updatedAt = new Date();
               tasks.set(taskId, task);
             }
-          }
+          },
+          undefined,
+          ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined
         )
       );
 
@@ -374,7 +431,7 @@ async function processTask(taskId: string) {
     const skeletonRaw = cachedSkeleton
       ? JSON.parse(JSON.stringify(cachedSkeleton))
       : await (async () => {
-          const { system: skSystem, user: skUser } = getGenerateTreeSkeletonPrompt(task.inputs, isMini);
+          const { system: skSystem, user: skUser } = getGenerateTreeSkeletonPrompt(task.inputs, isMini, orchOutput?.designInstructionsText);
           return withTimeout(
             llmService.chatJSONStream(
               skSystem,
@@ -389,7 +446,9 @@ async function processTask(taskId: string) {
                   tasks.set(taskId, task);
                   notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase, progress: mapped });
                 }
-              }
+              },
+              undefined,
+              ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined
             )
           );
         })();
@@ -443,7 +502,9 @@ async function processTask(taskId: string) {
         }));
 
         const { system, user } = getNodeDetailsPrompt(task.inputs, nodesMeta, 'core' as DetailLevel);
-        const detailsRaw = await withTimeout(llmService.chatJSON(system, user));
+        const detailsRaw = await withTimeout(
+          llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined)
+        );
 
         const details = Array.isArray(detailsRaw) ? detailsRaw : [];
         
@@ -884,7 +945,7 @@ export const treeController = {
       };
 
       const { system, user } = getExpandTreePrompt(inputs, existingData as any, existingNodeIds);
-      const expandRaw = await llmService.chatJSON(system, user);
+      const expandRaw = await llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined);
 
       const newNodes = expandRaw?.nodes || {};
       const newEdges = expandRaw?.edges || [];
@@ -1221,7 +1282,7 @@ export const treeController = {
         }));
 
         const { system, user } = getNodeDetailsPrompt(inputs, nodesMeta, 'full' as DetailLevel);
-        const detailsRaw = await llmService.chatJSON(system, user);
+        const detailsRaw = await llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined);
         const details = Array.isArray(detailsRaw) ? detailsRaw : [];
 
         for (const detail of details) {

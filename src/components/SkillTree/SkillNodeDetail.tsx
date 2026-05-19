@@ -450,7 +450,7 @@ const SkillNodeDetail: React.FC<SkillNodeDetailProps> = ({ node, treeId, onClose
 
       <div className="p-6 border-t border-app-border">
         {!showChat ? (
-          <button 
+          <button
             onClick={() => setShowChat(true)}
             disabled={!hasCoreInfo}
             className="btn-primary flex w-full items-center justify-center gap-2 rounded-2xl py-3 font-bold transition-all disabled:opacity-50"
@@ -459,8 +459,8 @@ const SkillNodeDetail: React.FC<SkillNodeDetailProps> = ({ node, treeId, onClose
             记录复盘
           </button>
         ) : (
-          <div className="h-[400px] -mx-6 -mb-6">
-            <ChatPanel nodeId={node.id} onBack={() => setShowChat(false)} />
+          <div className="h-[500px] -mx-6 -mb-6">
+            <ChatPanel nodeId={node.id} treeId={treeId} onBack={() => setShowChat(false)} />
           </div>
         )}
       </div>

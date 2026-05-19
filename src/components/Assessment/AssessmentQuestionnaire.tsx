@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { apiClient } from '../../services/apiClient';
 
 interface Question {
   id: string;
@@ -29,9 +28,16 @@ export function AssessmentQuestionnaire() {
 
   const fetchQuestions = async () => {
     try {
-      const response = await apiClient.get('/assessment/questions');
-      if (response.success) {
-        setQuestions(response.data.questions);
+      const response = await fetch('/api/assessment/questions', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setQuestions(data.data.questions);
+        }
       }
     } catch (error) {
       console.error('获取评估问题失败:', error);
@@ -53,10 +59,18 @@ export function AssessmentQuestionnaire() {
     
     setIsLoading(true);
     try {
-      const response = await apiClient.post('/assessment/submit', { answers });
-      if (response.success) {
-        setResult(response.data);
-        setShowResult(true);
+      const response = await fetch('/api/assessment/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ answers }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setResult(data.data);
+          setShowResult(true);
+        }
       }
     } catch (error) {
       console.error('提交评估失败:', error);

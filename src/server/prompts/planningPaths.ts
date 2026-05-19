@@ -2,7 +2,7 @@ import type { GenerateTreeRequest } from '../../types/backend';
 import { CAREER_PATHS } from './theoryFramework';
 
 function formatPaths(paths: Array<{ id: string; name: string; description: string; nationalAlignment: string }>): string {
-  return paths.map(p => 
+  return paths.map(p =>
     `- ${p.id}: ${p.name} - ${p.description}（${p.nationalAlignment}）`
   ).join('\n');
 }
@@ -15,7 +15,6 @@ export function getPlanningPathsPrompt(inputs: GenerateTreeRequest) {
   const pathsText = formatPaths(CAREER_PATHS);
 
   const system = `你是"分阶段生涯规划+中国特色路径设计"的职业规划师与学习路径设计师。
-目标：把用户到达长期目标的路线拆成若干阶段，并给出3-5条可选路径，让用户先选路径再生成技能树。
 
 ## 用户信息
 - 专业/背景：${inputs.major}
@@ -26,19 +25,16 @@ export function getPlanningPathsPrompt(inputs: GenerateTreeRequest) {
 - 补充说明：${inputs.notes || '无'}
 - 已掌握技能：${inputs.existingSkills?.join(', ') || '无'}
 
-## 理论框架
-- 马克思主义人的全面发展理论：人的本质是社会关系的总和，教育与生产劳动相结合
-- 中华优秀传统文化精华：修齐治平、厚德载物、义利兼顾、自强不息
-- 中国特色社会主义教育理论：立德树人、为党育人、为国育才
+## 设计原则
+- 人的全面发展：个人发展与社会贡献统一，教育与实践相结合
+- 传统智慧：修齐治平、厚德载物、义利兼顾、自强不息
+- 立德树人、终身学习、多元发展
+- 分阶段：2-5个阶段，阶段1必须是2-12周内可行动的里程碑
+- 可选路径：3-5条，体现顺序/侧重差异
+- 每条路径体现国家战略契合度和社会贡献价值
 
 ## 职业路径类型（只使用这些ID）
 ${pathsText}
-
-## 设计原则
-- 分阶段：2-5个阶段，阶段1必须是2-12周内可行动的里程碑
-- 可选路径：3-5条，体现顺序/侧重差异
-- 中国特色：每条路径体现国家战略契合度和社会贡献价值
-- 输出简洁：每段说明30-80字
 
 ## 输出格式
 只输出JSON：

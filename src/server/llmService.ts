@@ -89,22 +89,23 @@ class LLMService {
     }
   }
 
-  async chat(messages: LLMMessage[]): Promise<LLMResponse> {
+  async chat(messages: LLMMessage[], providerOverride?: ILLMProvider): Promise<LLMResponse> {
+    const provider = providerOverride || this.provider;
     const startTime = Date.now();
     let attempts = 0;
     const maxAttempts = 2;
 
     while (attempts < maxAttempts) {
       try {
-        const response = await this.provider.chat(messages);
+        const response = await provider.chat(messages);
         const latency = Date.now() - startTime;
-        this.logCall(response, latency, true);
+        this.logCall(response, latency, true, undefined, provider.getName());
         return response;
       } catch (error) {
         attempts++;
         if (attempts >= maxAttempts) {
           const latency = Date.now() - startTime;
-          this.logCall(null, latency, false, error instanceof Error ? error.message : String(error));
+          this.logCall(null, latency, false, error instanceof Error ? error.message : String(error), provider.getName());
           throw error;
         }
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -113,13 +114,13 @@ class LLMService {
     throw new Error('LLM 调用失败');
   }
 
-  async chatJSON(systemPrompt: string, userPrompt: string): Promise<any> {
+  async chatJSON(systemPrompt: string, userPrompt: string, providerOverride?: ILLMProvider): Promise<any> {
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ];
 
-    const response = await this.chat(messages);
+    const response = await this.chat(messages, providerOverride);
     return this.extractJSON(response.content);
   }
 
@@ -127,8 +128,10 @@ class LLMService {
     systemPrompt: string,
     userPrompt: string,
     callbacks: ChatJSONStreamCallbacks = {},
-    postProcess?: (data: any) => T
+    postProcess?: (data: any) => T,
+    providerOverride?: ILLMProvider
   ): Promise<T> {
+    const provider = providerOverride || this.provider;
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
@@ -202,8 +205,8 @@ class LLMService {
         };
 
         const response: LLMResponse = await (async () => {
-          if (typeof (this.provider as any).chatStream === 'function') {
-            return (this.provider as any).chatStream(messages, {
+          if (typeof (provider as any).chatStream === 'function') {
+            return (provider as any).chatStream(messages, {
               onDelta: (delta: string) => {
                 if (!delta) return;
                 fullBuffer += delta;
@@ -218,7 +221,7 @@ class LLMService {
             });
           }
 
-          const r = await this.provider.chat(messages);
+          const r = await provider.chat(messages);
           fullBuffer = r.content || '';
           incrementalParser.append(fullBuffer);
           callbacks.onChunk?.(fullBuffer);
@@ -1048,11 +1051,12 @@ class LLMService {
     };
   }
 
-  private logCall(response: LLMResponse | null, latency: number, success: boolean, error?: string) {
+  private logCall(response: LLMResponse | null, latency: number, success: boolean, error?: string, providerNameOverride?: string) {
     try {
       const id = uuidv4();
       const llmConfig = config.llm as any;
       const modelName = response?.model || llmConfig[config.llm.provider]?.model || 'unknown';
+      const providerName = providerNameOverride || this.provider.getName();
 
       const db = getDb();
       db.query(
@@ -1060,7 +1064,7 @@ class LLMService {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           id,
-          this.provider.getName(),
+          providerName,
           modelName,
           response?.usage.promptTokens || 0,
           response?.usage.completionTokens || 0,

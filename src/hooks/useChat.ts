@@ -1,39 +1,55 @@
 import { useCallback, useRef, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { difyApi } from '../services/difyApi';
+import { apiClient } from '../services/apiClient';
 import { ChatMessage } from '../types/chat';
 
-/**
- * 对话状态管理 Hook
- */
+interface ChatResponseResult {
+  reply: string;
+  progressUpdate?: { nodeId: string; newProgress: number; reason: string; isStuck?: boolean };
+  bloomAssessment?: { currentLevel: string; evidence: string; confidence: 'high' | 'medium' | 'low' };
+  kolbPrompt?: { stage: string; question: string };
+  newInsight?: string;
+  deliberatePracticeTip?: string;
+  nextChallenge?: string;
+  growthMindsetPhrase?: string;
+  nextHook?: string;
+  timelineEvent?: { type: string; summary: string; [key: string]: any };
+}
+
 export function useChat() {
   const { state, dispatch } = useAppContext();
   const [isSending, setIsSending] = useState(false);
   const loadedHistoryRef = useRef<Set<string>>(new Set());
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const loadHistory = useCallback(async (nodeId: string) => {
-    if (!state.skillTree?.id || loadedHistoryRef.current.has(nodeId)) return;
+    const currentState = stateRef.current;
+    if (!currentState.skillTree?.id || loadedHistoryRef.current.has(nodeId)) return;
 
-    const existingSession = state.chatSessions[nodeId];
+    const existingSession = currentState.chatSessions[nodeId];
     if (existingSession?.messages?.length) {
       loadedHistoryRef.current.add(nodeId);
       return;
     }
 
     try {
-      const result = await difyApi.getChatHistory(state.skillTree.id, nodeId);
-      const messages: ChatMessage[] = (result.messages || []).map((message) => ({
+      const treeId = currentState.skillTree.id;
+      const currentNodeProgress = currentState.skillTree?.nodes[nodeId]?.progress || 0;
+      const currentNodeName = currentState.skillTree.nodes[nodeId]?.name;
+      const result = await apiClient.getChatHistory(treeId, nodeId);
+      const messages: ChatMessage[] = (result.messages || []).map((message: any) => ({
         id: message.id,
         role: message.role,
         content: message.content,
-        timestamp: message.timestamp,
+        timestamp: message.timestamp || message.created_at,
         nodeId,
         metadata: message.metadata
           ? {
               progressUpdate: message.metadata.progress_update || message.metadata.progressUpdate
                 ? {
-                    from: state.skillTree?.nodes[nodeId]?.progress || 0,
-                    to: message.metadata.progress_update?.new_progress ?? message.metadata.progressUpdate?.newProgress ?? state.skillTree?.nodes[nodeId]?.progress ?? 0,
+                    from: currentNodeProgress,
+                    to: message.metadata.progress_update?.new_progress ?? message.metadata.progressUpdate?.newProgress ?? currentNodeProgress,
                   }
                 : undefined,
               newInsight: message.metadata.newInsight || message.metadata.new_insight,
@@ -51,7 +67,7 @@ export function useChat() {
         type: 'SET_CHAT_HISTORY',
         payload: {
           nodeId,
-          nodeName: state.skillTree.nodes[nodeId]?.name,
+          nodeName: currentNodeName,
           messages,
         }
       });
@@ -60,18 +76,18 @@ export function useChat() {
     } catch (e) {
       console.error('加载聊天历史失败:', e);
     }
-  }, [dispatch, state.chatSessions, state.skillTree]);
+  }, [dispatch]);
 
   const sendMessage = async (nodeId: string, content: string) => {
-    if (!state.skillTree) return;
-    
-    const node = state.skillTree.nodes[nodeId];
+    const currentState = stateRef.current;
+    if (!currentState.skillTree) return;
+
+    const node = currentState.skillTree.nodes[nodeId];
     if (!node) return;
 
     setIsSending(true);
     dispatch({ type: 'SET_CHAT_LOADING', payload: true });
 
-    // 1. 添加用户消息
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -82,21 +98,17 @@ export function useChat() {
     dispatch({ type: 'ADD_CONVERSATION', payload: { nodeId, message: userMsg } });
 
     try {
-      // 2. 调用 Dify API
-      const session = state.chatSessions[nodeId];
-      const result = await difyApi.sendChatMessage({
+      const result = await apiClient.sendChatMessage({
         nodeId,
         nodeName: node.name,
-        nodeHistory: JSON.stringify(session?.messages || []),
+        nodeHistory: '',
         currentProgress: node.progress,
         userMessage: content,
-        treeSummary: state.skillTree.summary,
-        fullTreeJson: JSON.stringify(state.skillTree),
-        conversationId: '', // TODO: 维护真正的 conversationId
-        treeId: state.skillTree.id,
-      });
+        treeSummary: currentState.skillTree.summary,
+        conversationId: '',
+        treeId: currentState.skillTree.id,
+      }) as ChatResponseResult;
 
-      // 3. 添加 AI 回复
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -116,15 +128,13 @@ export function useChat() {
       };
       dispatch({ type: 'ADD_CONVERSATION', payload: { nodeId, message: aiMsg } });
 
-      // 4. 更新节点进度
       if (result.progressUpdate) {
-        dispatch({ 
-          type: 'UPDATE_NODE_PROGRESS', 
-          payload: { nodeId, progress: result.progressUpdate.newProgress } 
+        dispatch({
+          type: 'UPDATE_NODE_PROGRESS',
+          payload: { nodeId, progress: result.progressUpdate.newProgress }
         });
       }
 
-      // 5. 更新 AI 建议
       if (result.nextHook) {
         dispatch({
           type: 'UPDATE_NODE_PENDING_MESSAGE',
@@ -152,7 +162,6 @@ export function useChat() {
         });
       }
 
-      // 6. 添加时间线事件
       if (result.timelineEvent) {
         dispatch({
           type: 'ADD_TIMELINE_EVENT',

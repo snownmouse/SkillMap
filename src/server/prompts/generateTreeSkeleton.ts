@@ -1,6 +1,6 @@
 import { GenerateTreeRequest } from '../../types/backend';
 
-export function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMini?: boolean) {
+export function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMini?: boolean, designInstructionsText?: string) {
   const planMeta = (inputs as any).planMeta && typeof (inputs as any).planMeta === 'object' ? (inputs as any).planMeta : undefined;
   const selectedStage = Array.isArray(planMeta?.stages)
     ? (planMeta.selectedStageId
@@ -24,7 +24,9 @@ export function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMin
 - 本次仅生成"当前阶段"的节点骨架，不要提前铺开后续阶段的节点。`
     : '';
 
-  const system = `你是职业技能树设计师，遵循Bloom认知层级递进、建构主义、刻意练习、OKR目标管理等学习科学理论，以及知行合一、立德树人等生涯教育理念，为用户构建科学学习路径骨架。
+  const diSection = designInstructionsText ? `\n## 中国特色生涯设计指令\n${designInstructionsText}\n` : '';
+
+  const system = `你是职业技能树设计师，为用户构建科学学习路径骨架。
 
 用户信息：
 - 专业：${inputs.major}
@@ -34,7 +36,7 @@ export function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMin
 - 已掌握技能：${inputs.existingSkills?.join(', ') || '无'}
 
 ${planningContext}
-
+${diSection}
 ## 约束
 1. 本次仅生成骨架，不生成resources/steps/tools/commonProblems/pitfalls/microMilestones/masteryCriteria
 2. 节点数：${nodeCountText} - 【必须达到】尽可能接近上限
