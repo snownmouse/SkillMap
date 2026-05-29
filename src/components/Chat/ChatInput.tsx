@@ -35,7 +35,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, aiPendingMessag
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !disabled) {
       e.preventDefault();
       handleSend();
     }

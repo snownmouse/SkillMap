@@ -333,7 +333,7 @@ async function processTask(taskId: string) {
         }
       };
 
-      const { system, user } = getGenerateTreePrompt(task.inputs, orchOutput?.designInstructionsText);
+      const { system, user } = await getGenerateTreePrompt(task.inputs, orchOutput?.designInstructionsText);
       const rawTreeData: SkillTreeData = await withTimeout(
         llmService.chatJSONStream(
           system,
@@ -431,7 +431,7 @@ async function processTask(taskId: string) {
     const skeletonRaw = cachedSkeleton
       ? JSON.parse(JSON.stringify(cachedSkeleton))
       : await (async () => {
-          const { system: skSystem, user: skUser } = getGenerateTreeSkeletonPrompt(task.inputs, isMini, orchOutput?.designInstructionsText);
+          const { system: skSystem, user: skUser } = await getGenerateTreeSkeletonPrompt(task.inputs, isMini, orchOutput?.designInstructionsText);
           return withTimeout(
             llmService.chatJSONStream(
               skSystem,

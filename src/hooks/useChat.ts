@@ -20,6 +20,8 @@ export function useChat() {
   const { state, dispatch } = useAppContext();
   const [isSending, setIsSending] = useState(false);
   const loadedHistoryRef = useRef<Set<string>>(new Set());
+  const isSendingRef = useRef(false);
+  const lastMessageSentRef = useRef<{ nodeId: string; content: string; timestamp: number } | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -80,16 +82,37 @@ export function useChat() {
 
   const sendMessage = async (nodeId: string, content: string) => {
     const currentState = stateRef.current;
+    const now = Date.now();
+    
+    // 多层防护机制
     if (!currentState.skillTree) return;
+    
+    // 1. 检查是否正在发送
+    if (isSendingRef.current) {
+      console.log('消息正在发送中，防止重复发送');
+      return;
+    }
+    
+    // 2. 检查是否是重复消息（相同内容、相同节点、1秒内）
+    if (lastMessageSentRef.current && 
+        lastMessageSentRef.current.nodeId === nodeId && 
+        lastMessageSentRef.current.content === content && 
+        now - lastMessageSentRef.current.timestamp < 1000) {
+      console.log('检测到重复消息，跳过');
+      return;
+    }
 
     const node = currentState.skillTree.nodes[nodeId];
     if (!node) return;
 
+    // 记录这次发送
+    lastMessageSentRef.current = { nodeId, content, timestamp: now };
+    isSendingRef.current = true;
     setIsSending(true);
     dispatch({ type: 'SET_CHAT_LOADING', payload: true });
 
     const userMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: now.toString(),
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
@@ -109,8 +132,16 @@ export function useChat() {
         treeId: currentState.skillTree.id,
       }) as ChatResponseResult;
 
+      // 重新从后端拉取最新的技能树数据，确保进度和所有数据都是最新的
+      try {
+        const freshTreeData = await apiClient.getSkillTreeById(currentState.skillTree.id);
+        dispatch({ type: 'SET_SKILL_TREE', payload: freshTreeData });
+      } catch (refreshError) {
+        console.warn('刷新技能树数据失败，使用本地更新:', refreshError);
+      }
+
       const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: (now + 1).toString(),
         role: 'assistant',
         content: result.reply,
         timestamp: new Date().toISOString(),
@@ -128,6 +159,7 @@ export function useChat() {
       };
       dispatch({ type: 'ADD_CONVERSATION', payload: { nodeId, message: aiMsg } });
 
+      // 如果有进度更新，在本地也同步更新（作为后备方案）
       if (result.progressUpdate) {
         dispatch({
           type: 'UPDATE_NODE_PROGRESS',
@@ -177,6 +209,7 @@ export function useChat() {
       console.error('发送消息失败:', e);
       dispatch({ type: 'SET_ERROR', payload: '发送消息失败，请重试' });
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
       dispatch({ type: 'SET_CHAT_LOADING', payload: false });
     }

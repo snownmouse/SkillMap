@@ -3,7 +3,7 @@ import { getGenerateTreePrompt } from '../src/server/prompts/generateTree';
 import type { GenerateTreeRequest } from '../src/types/backend';
 
 describe('getGenerateTreePrompt', () => {
-  test('should generate prompt with all required fields', () => {
+  test('should generate prompt with all required fields', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '前端工程师',
@@ -13,7 +13,7 @@ describe('getGenerateTreePrompt', () => {
       existingSkills: ['HTML', 'CSS', 'JavaScript基础']
     };
 
-    const { system, user } = getGenerateTreePrompt(inputs);
+    const { system, user } = await getGenerateTreePrompt(inputs);
 
     expect(system).toBeDefined();
     expect(user).toBeDefined();
@@ -21,7 +21,7 @@ describe('getGenerateTreePrompt', () => {
     expect(typeof user).toBe('string');
   });
 
-  test('should include user information in system prompt', () => {
+  test('should include user information in system prompt', async () => {
     const inputs: GenerateTreeRequest = {
       major: '软件工程',
       career: '全栈工程师',
@@ -31,7 +31,7 @@ describe('getGenerateTreePrompt', () => {
       existingSkills: ['Node.js', 'Python', 'SQL']
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('软件工程');
     expect(system).toContain('全栈工程师');
@@ -41,7 +41,7 @@ describe('getGenerateTreePrompt', () => {
     expect(system).toContain('Node.js, Python, SQL');
   });
 
-  test('should handle missing optional fields', () => {
+  test('should handle missing optional fields', async () => {
     const inputs: GenerateTreeRequest = {
       major: '数学',
       career: '数据分析师',
@@ -50,7 +50,7 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('数学');
     expect(system).toContain('数据分析师');
@@ -58,7 +58,7 @@ describe('getGenerateTreePrompt', () => {
     expect(system).toContain('无');
   });
 
-  test('should include theoretical framework in system prompt', () => {
+  test('should include theoretical framework in system prompt', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '软件工程师',
@@ -67,18 +67,14 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
-    expect(system).toContain("Bloom's Taxonomy");
-    expect(system).toContain('Constructivism');
-    expect(system).toContain('Connectivism');
-    expect(system).toContain('Cognitive Load Theory');
-    expect(system).toContain('OKR');
-    expect(system).toContain('Deliberate Practice');
-    expect(system).toContain('Mastery Learning');
+    expect(system).toContain('bloomLevel');
+    expect(system).toContain('dependencies');
+    expect(system).toContain('masteryCriteria');
   });
 
-  test('should include career education concepts', () => {
+  test('should include career education concepts', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '产品经理',
@@ -87,15 +83,15 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
-    expect(system).toContain('实践导向');
-    expect(system).toContain('自强不息');
-    expect(system).toContain('厚德载物');
-    expect(system).toContain('精益求精');
+    expect(system).toContain('设计指令');
+    expect(system).toContain('认知层级');
+    expect(system).toContain('节点结构');
+    expect(system).toContain('练习与评估');
   });
 
-  test('should specify JSON output format', () => {
+  test('should specify JSON output format', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: 'AI工程师',
@@ -104,15 +100,15 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
-    expect(system).toContain('严格输出 JSON');
+    expect(system).toContain('输出完整有效JSON');
     expect(system).toContain('nodes');
     expect(system).toContain('edges');
     expect(system).toContain('categories');
   });
 
-  test('should include design rules', () => {
+  test('should include design rules', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: 'DevOps工程师',
@@ -121,14 +117,14 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
-    expect(system).toContain('节点数量：25-40个');
-    expect(system).toContain('estimatedHours 在 10-100 之间');
-    expect(system).toContain('dependencies 必须引用已存在的 node id');
+    expect(system).toContain('至少30-50个');
+    expect(system).toContain('dependencies');
+    expect(system).toContain('核心8-12个');
   });
 
-  test('should handle edge cases with empty existingSkills', () => {
+  test('should handle edge cases with empty existingSkills', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '测试工程师',
@@ -138,12 +134,12 @@ describe('getGenerateTreePrompt', () => {
       existingSkills: []
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('已掌握技能：无');
   });
 
-  test('should handle edge cases with undefined existingSkills', () => {
+  test('should handle edge cases with undefined existingSkills', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '测试工程师',
@@ -152,12 +148,12 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('已掌握技能：无');
   });
 
-  test('should validate prompt structure completeness', () => {
+  test('should validate prompt structure completeness', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '架构师',
@@ -166,16 +162,16 @@ describe('getGenerateTreePrompt', () => {
       notes: '希望成为技术专家'
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('用户信息');
-    expect(system).toContain('理论框架');
+    expect(system).toContain('设计指令');
     expect(system).toContain('输出要求');
     expect(system).toContain('JSON格式');
-    expect(system).toContain('设计规则');
+    expect(system).toContain('节点结构');
   });
 
-  test('should include all required node fields in JSON schema', () => {
+  test('should include all required node fields in JSON schema', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '后端工程师',
@@ -184,7 +180,7 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     const requiredFields = [
       'id', 'name', 'description', 'whyItMatters', 'category',
@@ -200,7 +196,7 @@ describe('getGenerateTreePrompt', () => {
     });
   });
 
-  test('should include all required top-level fields in JSON schema', () => {
+  test('should include all required top-level fields in JSON schema', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '前端架构师',
@@ -209,7 +205,7 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('"career"');
     expect(system).toContain('"summary"');
@@ -223,7 +219,7 @@ describe('getGenerateTreePrompt', () => {
     expect(system).toContain('"timeline"');
   });
 
-  test('should handle special characters in notes', () => {
+  test('should handle special characters in notes', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '安全工程师',
@@ -232,14 +228,14 @@ describe('getGenerateTreePrompt', () => {
       notes: '特殊字符测试：\n换行\t制表符"引号\'单引号'
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('特殊字符测试');
     expect(system).toContain('换行');
     expect(system).toContain('制表符');
   });
 
-  test('should handle very long notes', () => {
+  test('should handle very long notes', async () => {
     const longNotes = 'A'.repeat(1000);
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
@@ -249,16 +245,16 @@ describe('getGenerateTreePrompt', () => {
       notes: longNotes
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain(longNotes);
   });
 
-  test('should handle all level values', () => {
+  test('should handle all level values', async () => {
     const levels: Array<'zero' | 'basic' | 'intermediate' | 'advanced'> =
       ['zero', 'basic', 'intermediate', 'advanced'];
 
-    levels.forEach(level => {
+    for (const level of levels) {
       const inputs: GenerateTreeRequest = {
         major: '计算机科学',
         career: '工程师',
@@ -267,12 +263,12 @@ describe('getGenerateTreePrompt', () => {
         notes: ''
       };
 
-      const { system } = getGenerateTreePrompt(inputs);
+      const { system } = await getGenerateTreePrompt(inputs);
       expect(system).toContain(level);
-    });
+    }
   });
 
-  test('should handle minimum weekly hours', () => {
+  test('should handle minimum weekly hours', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -281,12 +277,12 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('每周投入：1小时');
   });
 
-  test('should handle maximum weekly hours', () => {
+  test('should handle maximum weekly hours', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -295,12 +291,12 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('每周投入：168小时');
   });
 
-  test('should include mastery criteria levels', () => {
+  test('should include mastery criteria levels', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -309,14 +305,14 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('minimum');
     expect(system).toContain('proficient');
     expect(system).toContain('mastery');
   });
 
-  test('should include bloom levels', () => {
+  test('should include bloom levels', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -325,7 +321,7 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('remember');
     expect(system).toContain('understand');
@@ -335,7 +331,7 @@ describe('getGenerateTreePrompt', () => {
     expect(system).toContain('create');
   });
 
-  test('should include category types', () => {
+  test('should include category types', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -344,14 +340,14 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('core');
     expect(system).toContain('specialization');
     expect(system).toContain('general');
   });
 
-  test('should include difficulty levels', () => {
+  test('should include difficulty levels', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -360,14 +356,14 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('beginner');
     expect(system).toContain('intermediate');
     expect(system).toContain('advanced');
   });
 
-  test('should include resource types', () => {
+  test('should include resource types', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -376,7 +372,7 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { system } = getGenerateTreePrompt(inputs);
+    const { system } = await getGenerateTreePrompt(inputs);
 
     expect(system).toContain('course');
     expect(system).toContain('book');
@@ -384,7 +380,7 @@ describe('getGenerateTreePrompt', () => {
     expect(system).toContain('tool');
   });
 
-  test('should verify user prompt is simple and clear', () => {
+  test('should verify user prompt is simple and clear', async () => {
     const inputs: GenerateTreeRequest = {
       major: '计算机科学',
       career: '工程师',
@@ -393,7 +389,7 @@ describe('getGenerateTreePrompt', () => {
       notes: ''
     };
 
-    const { user } = getGenerateTreePrompt(inputs);
+    const { user } = await getGenerateTreePrompt(inputs);
 
     expect(user).toContain('职业技能树');
     expect(user).toContain('个人发展');

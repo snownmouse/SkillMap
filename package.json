@@ -17,7 +17,11 @@
     "db:verify": "tsx scripts/db/verify-sqlite-to-postgres.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "perf:stress": "tsx tests/stress-test.ts"
+    "perf:stress": "tsx tests/stress-test.ts",
+    "benchmark": "tsx tests/benchmark/index.ts",
+    "benchmark:prerequisite": "tsx tests/benchmark/index.ts --prerequisite-only",
+    "benchmark:career": "tsx tests/benchmark/index.ts --career-path-only",
+    "benchmark:download": "tsx tests/benchmark/datasets/download.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

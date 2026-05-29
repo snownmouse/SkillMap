@@ -1,6 +1,7 @@
 import { GenerateTreeRequest } from '../../types/backend';
+import { careerClassificationService } from '../services/CareerClassificationService';
 
-export function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMini?: boolean, designInstructionsText?: string) {
+export async function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMini?: boolean, designInstructionsText?: string) {
   const planMeta = (inputs as any).planMeta && typeof (inputs as any).planMeta === 'object' ? (inputs as any).planMeta : undefined;
   const selectedStage = Array.isArray(planMeta?.stages)
     ? (planMeta.selectedStageId
@@ -25,6 +26,7 @@ export function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMin
     : '';
 
   const diSection = designInstructionsText ? `\n## 中国特色生涯设计指令\n${designInstructionsText}\n` : '';
+  const nationalKbSection = await careerClassificationService.injectToPrompt(inputs.career);
 
   const system = `你是职业技能树设计师，为用户构建科学学习路径骨架。
 
@@ -36,7 +38,7 @@ export function getGenerateTreeSkeletonPrompt(inputs: GenerateTreeRequest, isMin
 - 已掌握技能：${inputs.existingSkills?.join(', ') || '无'}
 
 ${planningContext}
-${diSection}
+${diSection}${nationalKbSection}
 ## 约束
 1. 本次仅生成骨架，不生成resources/steps/tools/commonProblems/pitfalls/microMilestones/masteryCriteria
 2. 节点数：${nodeCountText} - 【必须达到】尽可能接近上限

@@ -48,7 +48,7 @@ function normalizeChatResult(aiResult: any, fallbackNodeId: string, currentProgr
     : undefined;
 
   const rawProgress = aiResult.progressUpdate || aiResult.progress_update;
-  const nextProgress = typeof rawProgress?.newProgress === 'number'
+  let nextProgress = typeof rawProgress?.newProgress === 'number'
     ? rawProgress.newProgress
     : typeof rawProgress?.new_progress === 'number'
       ? rawProgress.new_progress
@@ -61,14 +61,30 @@ function normalizeChatResult(aiResult: any, fallbackNodeId: string, currentProgr
       ? rawIsStuck.trim().toLowerCase() === 'true'
       : undefined;
 
-  const progressUpdate = typeof nextProgress === 'number'
-    ? {
-        nodeId: rawProgress?.nodeId || rawProgress?.node_id || fallbackNodeId,
-        newProgress: Math.max(0, Math.min(100, nextProgress)),
-        reason: rawProgress?.reason || '根据本次对话进行了进度调整',
-        ...(typeof isStuck === 'boolean' ? { isStuck } : {})
-      }
-    : undefined;
+  // 安全机制：确保进度更新合理
+  let progressUpdate;
+  if (typeof nextProgress === 'number') {
+    // 确保进度不能减少，除非明确卡住
+    if (!isStuck && nextProgress <= currentProgress) {
+      // LLM 没有合理增加进度，我们给一个最小增量
+      nextProgress = Math.min(100, currentProgress + 5);
+    }
+    
+    progressUpdate = {
+      nodeId: rawProgress?.nodeId || rawProgress?.node_id || fallbackNodeId,
+      newProgress: Math.max(0, Math.min(100, nextProgress)),
+      reason: rawProgress?.reason || '根据本次对话进行了进度调整',
+      ...(typeof isStuck === 'boolean' ? { isStuck } : {})
+    };
+  } else {
+    // LLM 完全没有返回进度更新，我们创建一个默认的
+    progressUpdate = {
+      nodeId: fallbackNodeId,
+      newProgress: Math.min(100, currentProgress + 5),
+      reason: '用户完成了一次有意义的对话，获得了成长',
+      isStuck: false
+    };
+  }
 
   const latestCoaching: CoachSnapshot | null = (
     bloomAssessment ||

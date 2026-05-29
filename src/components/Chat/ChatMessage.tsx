@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChatMessage } from '../../types/chat';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ChatMessageProps {
   message: ChatMessage;
@@ -9,6 +10,16 @@ const ChatMessageItem: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
   const time = new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const coachMeta = message.metadata;
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const hasCoachingContent = coachMeta && (
+    coachMeta.bloomAssessment ||
+    coachMeta.kolbPrompt ||
+    coachMeta.deliberatePracticeTip ||
+    coachMeta.nextChallenge ||
+    coachMeta.growthMindsetPhrase ||
+    coachMeta.nextHook
+  );
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -32,48 +43,60 @@ const ChatMessageItem: React.FC<ChatMessageProps> = ({ message }) => {
           </div>
         )}
 
-        {!isUser && coachMeta && (
-          <div className="mt-3 w-full space-y-2">
-            {coachMeta.bloomAssessment && (
-              <div className="rounded-2xl border border-app-border bg-app-surface/70 px-3 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted">Bloom 评估</div>
-                <div className="mt-1 text-sm font-semibold text-app-text">{coachMeta.bloomAssessment.currentLevel}</div>
-                <p className="mt-1 text-xs leading-5 text-app-muted">{coachMeta.bloomAssessment.evidence}</p>
-              </div>
-            )}
+        {!isUser && hasCoachingContent && (
+          <div className="mt-3 w-full">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted hover:text-app-text transition-colors bg-app-surface/50 rounded-full border border-app-border/30"
+            >
+              {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              反馈详情
+            </button>
 
-            {coachMeta.kolbPrompt && (
-              <div className="rounded-2xl border border-app-border bg-app-surface/70 px-3 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted">下一轮反思</div>
-                <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.kolbPrompt.question}</p>
-              </div>
-            )}
+            {isExpanded && (
+              <div className="mt-2 w-full space-y-2">
+                {coachMeta.bloomAssessment && (
+                  <div className="rounded-2xl border border-app-border bg-app-surface/70 px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted">Bloom 评估</div>
+                    <div className="mt-1 text-sm font-semibold text-app-text">{coachMeta.bloomAssessment.currentLevel}</div>
+                    <p className="mt-1 text-xs leading-5 text-app-muted">{coachMeta.bloomAssessment.evidence}</p>
+                  </div>
+                )}
 
-            {coachMeta.deliberatePracticeTip && (
-              <div className="rounded-2xl border border-[rgba(232,159,110,0.25)] bg-[rgba(232,159,110,0.08)] px-3 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-skill-core">刻意练习</div>
-                <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.deliberatePracticeTip}</p>
-              </div>
-            )}
+                {coachMeta.kolbPrompt && (
+                  <div className="rounded-2xl border border-app-border bg-app-surface/70 px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted">下一轮反思</div>
+                    <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.kolbPrompt.question}</p>
+                  </div>
+                )}
 
-            {coachMeta.nextChallenge && (
-              <div className="rounded-2xl border border-[rgba(156,180,179,0.35)] bg-[rgba(156,180,179,0.12)] px-3 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-status-completed">下一挑战</div>
-                <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.nextChallenge}</p>
-              </div>
-            )}
+                {coachMeta.deliberatePracticeTip && (
+                  <div className="rounded-2xl border border-[rgba(232,159,110,0.25)] bg-[rgba(232,159,110,0.08)] px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-skill-core">刻意练习</div>
+                    <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.deliberatePracticeTip}</p>
+                  </div>
+                )}
 
-            {coachMeta.growthMindsetPhrase && (
-              <div className="rounded-2xl border border-[rgba(156,180,179,0.25)] bg-[rgba(156,180,179,0.08)] px-3 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-status-completed">成长鼓励</div>
-                <p className="mt-1 text-sm leading-6 text-app-text italic">{coachMeta.growthMindsetPhrase}</p>
-              </div>
-            )}
+                {coachMeta.nextChallenge && (
+                  <div className="rounded-2xl border border-[rgba(156,180,179,0.35)] bg-[rgba(156,180,179,0.12)] px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-status-completed">下一挑战</div>
+                    <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.nextChallenge}</p>
+                  </div>
+                )}
 
-            {coachMeta.nextHook && (
-              <div className="rounded-2xl border border-[rgba(214,176,165,0.25)] bg-[rgba(255,250,240,0.5)] px-3 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted">继续探索</div>
-                <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.nextHook}</p>
+                {coachMeta.growthMindsetPhrase && (
+                  <div className="rounded-2xl border border-[rgba(156,180,179,0.25)] bg-[rgba(156,180,179,0.08)] px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-status-completed">成长鼓励</div>
+                    <p className="mt-1 text-sm leading-6 text-app-text italic">{coachMeta.growthMindsetPhrase}</p>
+                  </div>
+                )}
+
+                {coachMeta.nextHook && (
+                  <div className="rounded-2xl border border-[rgba(214,176,165,0.25)] bg-[rgba(255,250,240,0.5)] px-3 py-2">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-app-muted">继续探索</div>
+                    <p className="mt-1 text-sm leading-6 text-app-text">{coachMeta.nextHook}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

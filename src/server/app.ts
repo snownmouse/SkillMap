@@ -78,6 +78,7 @@ export async function registerRoutes(app: express.Express) {
   const { goalsRouter } = await import('./routes/goals');
   const assessmentRouter = await import('./routes/assessment');
   const careerPlanRouter = await import('./routes/careerPlan');
+  const { benchmarkRouter } = await import('./routes/benchmark');
   const { optionalAuth, requireAuth } = await import('./controllers/authController');
   const { treeController } = await import('./controllers/treeController');
   const { llmRateLimiter } = await import('./middleware/llmRateLimit');
@@ -143,6 +144,9 @@ export async function registerRoutes(app: express.Express) {
       res.status(500).json({ error: '获取指标失败' });
     }
   });
+
+  // 基准测试路由（无需认证）
+  app.use('/api', benchmarkRouter);
 
   const { errorHandler } = await import('./middleware/errorHandler');
   app.use(errorHandler);

@@ -1,6 +1,7 @@
 import { GenerateTreeRequest } from '../../types/backend';
+import { careerClassificationService } from '../services/CareerClassificationService';
 
-export function getGenerateTreePrompt(
+export async function getGenerateTreePrompt(
   inputs: GenerateTreeRequest,
   designInstructionsText?: string
 ) {
@@ -28,6 +29,8 @@ export function getGenerateTreePrompt(
 
   const diSection = designInstructionsText ? `\n## 中国特色生涯设计指令\n${designInstructionsText}\n` : '';
 
+  const nationalKbSection = await careerClassificationService.injectToPrompt(inputs.career);
+
   const system = `你是职业技能树设计师，遵循循证学习理念为用户构建科学学习路径。
 
 ## 用户信息
@@ -54,7 +57,7 @@ ${planningContext}
 - resources中practice类型≥30%，支持"专注→反馈→调整→挑战"循环
 - 每节点定义minimum/proficient/mastery三级掌握标准
 - 根节点3-5个，深度4-6层，必须有分支非线链
-${diSection}
+${diSection}${nationalKbSection}
 ## 输出要求
 输出完整有效JSON，不要输出其他文字。每个节点像可直接阅读的学习卡片。
 

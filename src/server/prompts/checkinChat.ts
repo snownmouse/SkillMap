@@ -46,11 +46,17 @@ export function getCheckinChatPrompt(
   "timelineEvent": {"type": "conversation", "summary": "一句话概括核心"}
 }
 
-## 约束
+## 重要约束
 - reply 100-200字
 - 不直接给答案，通过追问引导
 - 卡住时给具体hint但不是答案
-- 进度更新需有依据，差值不超过20%
+- **进度更新规则（非常重要）**：
+  - 必须更新 progressUpdate，newProgress 必须大于当前进度 ${params.currentProgress}%
+  - 最小增加 5%，最大增加 20%（除非用户明确展示了显著进步）
+  - 如果用户积极参与对话、展示了学习成果、或有具体行动，新进度 = 当前进度 + (5-15)%
+  - 如果用户展示了深入理解或完成了挑战，新进度 = 当前进度 + (10-20)%
+  - 如果用户表示卡住或没进步，isStuck = true，newProgress 保持不变
+  - reason 字段必须具体说明为什么更新进度，引用用户的原话或行为
 - 语言自然具体，避免空泛模板句`;
 
   return { system, user: params.userMessage };
