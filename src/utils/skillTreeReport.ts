@@ -561,7 +561,7 @@ export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
 <body>
   <main class="page">
     <section class="hero">
-      <div class="eyebrow">SkillMap Report</div>
+      <div class="eyebrow">栖舟寻志 技能树报告</div>
       <h1>${escapeHtml(treeData.career)}</h1>
       <div class="hero-meta">生成时间：${escapeHtml(formatDate(treeData.generatedAt))}</div>
       <p class="summary">${escapeHtml(treeData.summary || '暂无总览说明')}</p>
@@ -610,7 +610,7 @@ export function createSkillTreeHtmlReport(treeData: SkillTreeData) {
     </section>
 
     <div class="footer">
-      本报告由当前 SkillMap 项目导出生成，可直接本地打开查看。
+      本报告由栖舟寻志（SkillMap）项目导出生成，可直接本地打开查看。
     </div>
   </main>
 </body>

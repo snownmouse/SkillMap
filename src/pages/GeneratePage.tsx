@@ -251,7 +251,7 @@ const GeneratePage: React.FC = () => {
             <div className="section-kicker mx-auto mb-4 w-fit">
               生成你的成长地图
             </div>
-            <h1 className="text-3xl font-black text-app-text md:text-4xl">定制你的专属 SkillMap</h1>
+            <h1 className="text-3xl font-black text-app-text md:text-4xl">定制你的专属技能树</h1>
           </div>
           {error && (
             <div className="mx-auto mb-6 w-full max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">

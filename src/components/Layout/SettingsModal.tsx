@@ -97,7 +97,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
                 {/* 关于 */}
                 <div className="space-y-2">
-                  <div className="text-app-muted text-xs font-bold uppercase tracking-wider mb-2">关于 SkillMap</div>
+                  <div className="text-app-muted text-xs font-bold uppercase tracking-wider mb-2">关于 栖舟寻志</div>
                   <div className="p-4 bg-[rgba(255,250,240,0.6)] rounded-xl border border-[rgba(214,176,165,0.3)] space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-app-muted">版本</span>
@@ -124,7 +124,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div className="py-4 text-center text-[10px] text-app-muted/60 uppercase tracking-widest font-medium">
-                SkillMap © 2024
+                栖舟寻志 © 2024
               </div>
             </motion.div>
           </div>
