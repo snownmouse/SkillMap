@@ -1,17 +1,25 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import cytoscape from 'cytoscape';
 import { SkillTreeData } from '../../types/skillTree';
+import { useTheme } from '../../context/ThemeContext';
 
 interface SkillTreeCanvasImplProps {
   data: SkillTreeData;
   onNodeClick: (nodeId: string) => void;
 }
 
-const statusColors = {
+const defaultStatusColors = {
   locked: { bg: '#f5f3f0', border: '#d4c8b8', text: '#a0a0a0' },
   available: { bg: '#e8f4e8', border: '#8fbc8f', text: '#5a8a5a' },
   in_progress: { bg: '#fff8e8', border: '#daa520', text: '#b8860b' },
   completed: { bg: '#e0f0e0', border: '#6bbd6b', text: '#4a8a4a' }
+};
+
+const childrensDayStatusColors = {
+  locked: { bg: '#FFE4EC', border: '#FFB6C1', text: '#C9A0A0' },
+  available: { bg: '#FFE4E4', border: '#FF85A2', text: '#FF6B8A' },
+  in_progress: { bg: '#FFF0E4', border: '#FFB347', text: '#FF9F43' },
+  completed: { bg: '#E4F4FF', border: '#87CEEB', text: '#5DADE2' }
 };
 
 function getLayoutConfig(data: SkillTreeData) {
@@ -49,9 +57,12 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
   const dataRef = useRef<SkillTreeData>(data);
   const onNodeClickRef = useRef(onNodeClick);
   const isDraggingRef = useRef(false);
+  const { theme } = useTheme();
 
   onNodeClickRef.current = onNodeClick;
   dataRef.current = data;
+
+  const statusColors = theme === 'childrens_day' ? childrensDayStatusColors : defaultStatusColors;
 
   const nodeStyle = useMemo(() => ({
     width: 140,
@@ -105,7 +116,98 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
     const cy = cytoscape({
       container: containerRef.current,
       elements,
-      style: [
+      style: theme === 'childrens_day' ? [
+        {
+          selector: 'node',
+          style: {
+            width: 140,
+            height: 50,
+            shape: 'ellipse',
+            'background-color': '#ffffff',
+            'border-width': 3,
+            'border-color': '#FFB6C1',
+            'label': 'data(label)',
+            'color': '#5D4E6D',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'font-size': 12,
+            'font-weight': 'bold' as const,
+            'text-wrap': 'ellipsis' as const,
+            'text-max-width': '120px',
+            'text-opacity': 0.9,
+            'transition-property': 'background-color, border-color, width, height, shape',
+            'transition-duration': 400,
+            'box-shadow': '0 4px 12px rgba(255, 133, 162, 0.2)'
+          }
+        },
+        {
+          selector: 'node[status="locked"]',
+          style: {
+            'background-color': '#FFE4EC',
+            'border-color': '#FFB6C1',
+            'color': '#C9A0A0',
+            'opacity': 0.7
+          }
+        },
+        {
+          selector: 'node[status="available"]',
+          style: {
+            'background-color': '#FFE4E4',
+            'border-color': '#FF85A2',
+            'color': '#FF6B8A'
+          }
+        },
+        {
+          selector: 'node[status="in_progress"]',
+          style: {
+            'background-color': '#FFF0E4',
+            'border-color': '#FFB347',
+            'color': '#FF9F43'
+          }
+        },
+        {
+          selector: 'node[status="completed"]',
+          style: {
+            'background-color': '#E4F4FF',
+            'border-color': '#87CEEB',
+            'color': '#5DADE2'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 4,
+            'line-color': '#FFB6C1',
+            'curve-style': 'bezier',
+            'target-arrow-shape': 'triangle',
+            'target-arrow-color': '#FFB6C1',
+            'opacity': 0.7
+          }
+        },
+        {
+          selector: 'edge[type="related"]',
+          style: {
+            'line-style': 'dashed',
+            'opacity': 0.5
+          }
+        },
+        {
+          selector: 'edge:selected',
+          style: {
+            'line-color': '#FF85A2',
+            'target-arrow-color': '#FF85A2',
+            width: 5
+          }
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'border-width': 4,
+            'border-color': '#FF85A2',
+            'box-shadow': '0 8px 24px rgba(255, 133, 162, 0.4)'
+          }
+        }
+      ] : [
         {
           selector: 'node',
           style: {
@@ -371,11 +473,17 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
       className="w-full h-full"
       style={{
         minHeight: '600px',
-        background: `
-          linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
-          linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
-          linear-gradient(180deg, #faf9f7 0%, #f5f3f0 40%, #ede8e0 100%)
-        `,
+        background: theme === 'childrens_day'
+          ? `
+              linear-gradient(90deg, rgba(255,182,193,0.08) 1px, transparent 1px),
+              linear-gradient(rgba(255,182,193,0.08) 1px, transparent 1px),
+              linear-gradient(180deg, #FFF5F8 0%, #FFE4EC 40%, #E8F4F8 100%)
+            `
+          : `
+              linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+              linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+              linear-gradient(180deg, #faf9f7 0%, #f5f3f0 40%, #ede8e0 100%)
+            `,
         backgroundSize: '40px 40px, 40px 40px, 100% 100%'
       }}
     />

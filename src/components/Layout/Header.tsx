@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { GitBranch, Radar, Settings, Sparkles, User } from 'lucide-react';
+import { GitBranch, Radar, Settings, Sparkles, User, PartyPopper } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import { useSkillTree } from '../../hooks/useSkillTree';
 import { useAppContext } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 
 /**
  * 顶部导航栏
@@ -13,6 +14,7 @@ const Header: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { skillTree } = useSkillTree();
   const { state } = useAppContext();
+  const { theme, toggleTheme } = useTheme();
   const currentTreePath = skillTree?.id ? `/tree/${skillTree.id}` : '/tree';
   const currentTimelinePath = skillTree?.id ? `/tree/${skillTree.id}/timeline` : '/tree/timeline';
 
@@ -58,13 +60,21 @@ const Header: React.FC = () => {
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            className="hidden rounded-xl border border-skill-core/20 bg-skill-core/10 px-3 py-2 text-sm font-bold text-skill-core transition-all hover:bg-skill-core/20 hover:scale-105 active:scale-95 sm:inline-flex items-center gap-2"
+            title={theme === 'default' ? '切换到六一主题' : '切换到默认主题'}
+          >
+            <PartyPopper size={16} />
+            <span className="hidden lg:inline">{theme === 'default' ? '六一' : '原版'}</span>
+          </button>
           <Link
             to="/generate"
             className="hidden rounded-xl border border-skill-core/20 bg-skill-core/10 px-4 py-2 text-sm font-bold text-skill-core transition-all hover:bg-skill-core/20 hover:scale-105 active:scale-95 md:inline-flex"
           >
             继续规划
           </Link>
-          <button 
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.8)] text-app-muted transition-all hover:text-skill-core hover:bg-[rgba(232,159,110,0.05)] hover:rotate-90"
           >

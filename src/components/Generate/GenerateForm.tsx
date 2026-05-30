@@ -121,20 +121,20 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
   };
 
   return (
-    <div className="panel-card relative mx-auto max-w-2xl overflow-hidden rounded-[30px] p-8">
+    <div className="panel-card relative mx-auto max-w-2xl overflow-hidden rounded-[30px] p-4 sm:p-8">
       <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-skill-core/10 blur-3xl" />
       <div className="absolute -bottom-20 left-0 h-40 w-40 rounded-full bg-skill-general/10 blur-3xl" />
 
-      <div className="flex justify-between mb-10 relative z-10">
+      <div className="flex justify-between mb-6 sm:mb-10 relative z-10">
         {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(i => (
           <div key={i} className="flex items-center flex-1 last:flex-none">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold transition-all duration-500 ${
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-500 ${
               step >= i ? 'bg-skill-core text-white shadow-lg shadow-skill-core/20' : 'bg-app-surface text-app-muted border border-[rgba(214,176,165,0.4)]'
             }`}>
               {i}
             </div>
             {i < TOTAL_STEPS && (
-              <div className="flex-1 mx-4 h-1 bg-app-surface border border-[rgba(214,176,165,0.2)] rounded-full overflow-hidden">
+              <div className="flex-1 mx-2 sm:mx-4 h-1 bg-app-surface border border-[rgba(214,176,165,0.2)] rounded-full overflow-hidden">
                 <div className={`h-full bg-skill-core transition-all duration-500 ${step > i ? 'w-full' : 'w-0'}`} />
               </div>
             )}
@@ -143,29 +143,29 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
       </div>
 
       {step === 1 && (
-        <div className="space-y-8 animate-fade-in relative z-10">
+        <div className="space-y-6 sm:space-y-8 animate-fade-in relative z-10">
           <div className="space-y-2">
-            <h2 className="text-3xl font-black text-app-text flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-black text-app-text flex items-center gap-3">
               <Target className="text-skill-core" />
               确立你的目标
             </h2>
-            <p className="text-app-muted">选择一个大类，然后告诉我们你具体的职业愿景</p>
+            <p className="text-app-muted text-sm sm:text-base">选择一个大类，然后告诉我们你具体的职业愿景</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
             {CAREER_CATEGORIES.map(cat => (
             <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.name)}
-                className={`p-5 rounded-[24px] border-2 text-left transition-all group ${
+                className={`p-4 sm:p-5 rounded-2xl sm:rounded-[24px] border-2 text-left transition-all group ${
                   selectedCategory === cat.name 
                     ? 'bg-[rgba(255,250,240,0.9)] border-skill-core shadow-md shadow-skill-core/10 scale-[1.02]' 
                     : 'bg-[rgba(255,250,240,0.6)] border-[rgba(214,176,165,0.3)] hover:border-skill-core/50 hover:bg-[rgba(255,250,240,0.8)]'
                 }`}
               >
-                <div className="text-3xl mb-3 transform transition-transform group-hover:scale-110">{cat.icon}</div>
-                <div className={`font-bold text-lg ${selectedCategory === cat.name ? 'text-skill-core' : 'text-app-text'}`}>{cat.name}</div>
-                <div className="text-xs text-app-muted mt-1.5 opacity-80 group-hover:opacity-100 transition-opacity">{cat.examples}</div>
+                <div className="text-2xl sm:text-3xl mb-2 sm:mb-3 transform transition-transform group-hover:scale-110">{cat.icon}</div>
+                <div className={`font-bold text-base sm:text-lg ${selectedCategory === cat.name ? 'text-skill-core' : 'text-app-text'}`}>{cat.name}</div>
+                <div className="text-xs text-app-muted mt-1 opacity-80 group-hover:opacity-100 transition-opacity hidden sm:block">{cat.examples}</div>
               </button>
             ))}
           </div>
@@ -178,7 +178,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                 value={formData.career}
                 onChange={e => setFormData({...formData, career: e.target.value})}
                 placeholder="例如：资深前端架构师、量化策略研究员..."
-                className="w-full rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-5 text-lg text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
+                className="w-full rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-3 sm:p-5 text-base sm:text-lg text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
               />
             </div>
             <div>
@@ -188,7 +188,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                 value={formData.major}
                 onChange={e => setFormData({...formData, major: e.target.value})}
                 placeholder="例如：计算机大三在读、3年传统行业财务..."
-                className="w-full rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-5 text-lg text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
+                className="w-full rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-3 sm:p-5 text-base sm:text-lg text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
               />
             </div>
           </div>
@@ -196,7 +196,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
           <button 
             disabled={!formData.career || !selectedCategory}
             onClick={handleNext}
-            className="btn-primary flex w-full items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50 group"
+            className="btn-primary flex w-full items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-black transition-all disabled:opacity-50 group"
           >
             继续下一步
             <ChevronRight className="group-hover:translate-x-1 transition-transform" />
@@ -205,13 +205,13 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
       )}
 
       {step === 2 && (
-        <div className="space-y-8 animate-fade-in relative z-10">
+        <div className="space-y-6 sm:space-y-8 animate-fade-in relative z-10">
           <div className="space-y-2">
-            <h2 className="text-3xl font-black text-app-text flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-black text-app-text flex items-center gap-3">
               <BookOpen className="text-skill-core" />
               评估当前状态
             </h2>
-            <p className="text-app-muted">诚实地评估起点，让我们为你规划最合适的难度</p>
+            <p className="text-app-muted text-sm sm:text-base">诚实地评估起点，让我们为你规划最合适的难度</p>
           </div>
 
           <div className="space-y-3">
@@ -219,36 +219,36 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
               <button
                 key={level.id}
                 onClick={() => setFormData({...formData, level: level.id as any})}
-                className={`w-full p-5 rounded-[24px] border-2 transition-all flex items-center gap-5 text-left group ${
+                className={`w-full p-4 sm:p-5 rounded-2xl sm:rounded-[24px] border-2 transition-all flex items-center gap-3 sm:gap-5 text-left group ${
                   formData.level === level.id 
                     ? 'bg-[rgba(255,250,240,0.9)] border-skill-core shadow-md shadow-skill-core/10 scale-[1.01]' 
                     : 'bg-[rgba(255,250,240,0.6)] border-[rgba(214,176,165,0.3)] hover:border-skill-core/50 hover:bg-[rgba(255,250,240,0.8)]'
                 }`}
               >
-                <div className="text-4xl transform transition-transform group-hover:scale-110">{level.icon}</div>
+                <div className="text-3xl sm:text-4xl transform transition-transform group-hover:scale-110">{level.icon}</div>
                 <div>
-                  <div className={`font-bold text-lg mb-1 ${formData.level === level.id ? 'text-skill-core' : 'text-app-text'}`}>{level.name}</div>
-                  <div className="text-sm text-app-muted opacity-80">{level.desc}</div>
+                  <div className={`font-bold text-base sm:text-lg mb-1 ${formData.level === level.id ? 'text-skill-core' : 'text-app-text'}`}>{level.name}</div>
+                  <div className="text-sm text-app-muted opacity-80 hidden sm:block">{level.desc}</div>
                 </div>
               </button>
             ))}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold text-app-muted flex items-center gap-2">
                 <Clock size={16} className="text-skill-core" />
                 每周投入时长
               </label>
-              <span className="text-xl font-black text-skill-core">{formData.weeklyHours}h <span className="text-xs font-normal text-app-muted">/ week</span></span>
+              <span className="text-lg sm:text-xl font-black text-skill-core">{formData.weeklyHours}h <span className="text-xs font-normal text-app-muted">/ week</span></span>
             </div>
             
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {TIME_PRESETS.map(preset => (
                 <button
                   key={preset.label}
                   onClick={() => setFormData({...formData, weeklyHours: preset.hours})}
-                  className={`py-2 rounded-xl text-[10px] font-bold border transition-all ${
+                  className={`py-2 rounded-xl text-[10px] sm:text-xs font-bold border transition-all ${
                     formData.weeklyHours === preset.hours 
                       ? 'bg-skill-core text-white border-skill-core' 
                       : 'bg-app-surface text-app-muted border-[rgba(214,176,165,0.4)] hover:border-skill-core'
@@ -269,12 +269,12 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
             />
           </div>
 
-          <div className="flex space-x-4">
-            <button onClick={handlePrev} className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+            <button onClick={handlePrev} className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-bold transition-all">
               <ChevronLeft size={20} />
               返回
             </button>
-            <button onClick={handleNext} className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all">
+            <button onClick={handleNext} className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-black transition-all">
               继续
               <ChevronRight size={20} />
             </button>
@@ -283,23 +283,23 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
       )}
 
       {step === 3 && (
-        <div className="space-y-8 animate-fade-in relative z-10">
+        <div className="space-y-6 sm:space-y-8 animate-fade-in relative z-10">
           <div className="space-y-2">
-            <h2 className="text-3xl font-black text-app-text flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-black text-app-text flex items-center gap-3">
               <MessageSquare className="text-skill-core" />
               个性化补充
             </h2>
-            <p className="text-app-muted">写下你的小偏好，让这份路径更贴合你的生活</p>
+            <p className="text-app-muted text-sm sm:text-base">写下你的小偏好，让这份路径更贴合你的生活</p>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
               <label className="block text-sm font-bold text-app-muted mb-3">学习偏好 / 特殊需求</label>
               <textarea 
                 value={formData.notes}
                 onChange={e => setFormData({...formData, notes: e.target.value})}
                 placeholder="例如：我更喜欢视频教程而非文档；我希望在 3 个月内达到就业水平；我目前在职，只能利用碎片时间..."
-                className="h-32 w-full resize-none rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-5 text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
+                className="h-24 sm:h-32 w-full resize-none rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-3 sm:p-5 text-sm sm:text-base text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
               />
             </div>
 
@@ -309,7 +309,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                 value={longTermGoal}
                 onChange={e => setLongTermGoal(e.target.value)}
                 placeholder="例如：成为资深前端架构师；转型为量化研究员；进入重点领域做算法工程师..."
-                className="h-24 w-full resize-none rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-5 text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
+                className="h-20 sm:h-24 w-full resize-none rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-3 sm:p-5 text-sm sm:text-base text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
               />
             </div>
 
@@ -322,13 +322,13 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                   onChange={e => setSkillInput(e.target.value)}
                   onKeyDown={addSkill}
                   placeholder="例如：Python, Git, 基础英语..."
-                  className="w-full rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-5 text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
+                  className="w-full rounded-2xl border border-[rgba(214,176,165,0.4)] bg-[rgba(255,250,240,0.6)] p-3 sm:p-5 text-sm sm:text-base text-app-text outline-none transition-all focus:ring-2 focus:ring-skill-core/50 focus:bg-white"
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-app-muted bg-white/50 px-2 py-1 rounded border border-[rgba(214,176,165,0.4)] shadow-sm font-mono">Enter</div>
+                <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-xs text-app-muted bg-white/50 px-2 py-1 rounded border border-[rgba(214,176,165,0.4)] shadow-sm font-mono hidden sm:block">Enter</div>
               </div>
               <div className="flex flex-wrap gap-2 mt-4">
                 {formData.existingSkills?.map(skill => (
-                  <span key={skill} className="px-4 py-2 bg-skill-core/10 border border-skill-core/20 rounded-xl text-xs text-skill-core flex items-center font-bold animate-scale-in">
+                  <span key={skill} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-skill-core/10 border border-skill-core/20 rounded-xl text-xs text-skill-core flex items-center font-bold animate-scale-in">
                     {skill}
                     <button onClick={() => removeSkill(skill)} className="ml-2 hover:text-white transition-colors">✕</button>
                   </span>
@@ -340,12 +340,12 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
             </div>
           </div>
 
-          <div className="flex space-x-4">
-            <button onClick={handlePrev} className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+            <button onClick={handlePrev} className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-bold transition-all">
               <ChevronLeft size={20} />
               返回
             </button>
-            <button onClick={handleNext} className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all">
+            <button onClick={handleNext} className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-black transition-all">
               下一步
               <ChevronRight size={20} />
             </button>
@@ -354,47 +354,47 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
       )}
 
       {step === 4 && (
-        <div className="space-y-8 animate-fade-in relative z-10">
+        <div className="space-y-6 sm:space-y-8 animate-fade-in relative z-10">
           <div className="space-y-2">
-            <h2 className="text-3xl font-black text-app-text flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-black text-app-text flex items-center gap-3">
               <Compass className="text-skill-core" />
               规划你的路线
             </h2>
-            <p className="text-app-muted">基于你填写的信息，AI 可以为你分析阶段拆分和路线选择</p>
+            <p className="text-app-muted text-sm sm:text-base">基于你填写的信息，AI 可以为你分析阶段拆分和路线选择</p>
           </div>
 
           {!planning && !planningLoading && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-6 space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-skill-core/10 flex items-center justify-center flex-shrink-0">
-                    <Route className="text-skill-core" size={24} />
+              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-4 sm:p-6 space-y-4">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-skill-core/10 flex items-center justify-center flex-shrink-0">
+                    <Route className="text-skill-core" size={20} />
                   </div>
                   <div>
-                    <div className="font-bold text-app-text text-lg">生成路线建议</div>
-                    <div className="text-sm text-app-muted mt-1 leading-relaxed">
+                    <div className="font-bold text-app-text text-base sm:text-lg">生成路线建议</div>
+                    <div className="text-xs sm:text-sm text-app-muted mt-1 leading-relaxed">
                       AI 将根据你的背景和目标，为你拆分学习阶段（2-5个），并提供 3-5 条可选发展路线。
                       选择路线后，技能树将聚焦于第一阶段的目标。
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <div className="rounded-xl bg-white/50 p-3 text-center">
                     <div className="text-xs text-app-muted">目标职业</div>
-                    <div className="font-bold text-app-text mt-1">{formData.career}</div>
+                    <div className="font-bold text-app-text mt-1 text-sm sm:text-base">{formData.career}</div>
                   </div>
                   <div className="rounded-xl bg-white/50 p-3 text-center">
                     <div className="text-xs text-app-muted">长期目标</div>
-                    <div className="font-bold text-app-text mt-1">{longTermGoal || formData.career}</div>
+                    <div className="font-bold text-app-text mt-1 text-sm sm:text-base">{longTermGoal || formData.career}</div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button
                   onClick={handleGeneratePlanning}
                   disabled={!formData.career || !formData.major}
-                  className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50"
+                  className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-black transition-all disabled:opacity-50"
                 >
                   <Zap size={20} />
                   生成路线建议
@@ -402,10 +402,10 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                 <button
                   onClick={handleSubmit}
                   disabled={isLoading}
-                  className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all disabled:opacity-50"
+                  className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-bold transition-all disabled:opacity-50"
                 >
                   <SkipForward size={20} />
-                  跳过，直接生成
+                  跳过
                 </button>
               </div>
 
@@ -418,7 +418,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
           )}
 
           {planningLoading && (
-            <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-8 text-center space-y-4">
+            <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-6 sm:p-8 text-center space-y-4">
               <div className="w-12 h-12 border-3 border-skill-core/30 border-t-skill-core rounded-full animate-spin mx-auto" />
               <div className="font-bold text-app-text">正在分析你的职业路线...</div>
               <div className="text-sm text-app-muted">AI 正在根据你的背景拆分阶段、推荐路线</div>
@@ -426,15 +426,15 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
           )}
 
           {planning && (
-            <div className="space-y-5">
-              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-4">
+            <div className="space-y-4 sm:space-y-5">
+              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-3 sm:p-4">
                 <div className="text-sm font-black text-app-text mb-3">阶段拆分（先走第 1 阶段）</div>
                 <div className="space-y-3">
                   {planning.stages.map((s, idx) => (
                     <div key={s.id} className="rounded-xl border border-[rgba(214,176,165,0.25)] bg-white/40 p-3">
                       <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-lg bg-skill-core/10 text-skill-core text-xs font-bold flex items-center justify-center">{idx + 1}</span>
-                        <span className="font-bold text-app-text">{s.title}</span>
+                        <span className="font-bold text-app-text text-sm sm:text-base">{s.title}</span>
                         {s.suggestedMonths && <span className="text-xs text-app-muted ml-auto">{s.suggestedMonths}个月</span>}
                       </div>
                       <div className="text-xs text-app-muted mt-1 ml-8">{s.objective}</div>
@@ -443,7 +443,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-4">
+              <div className="rounded-2xl border border-[rgba(214,176,165,0.35)] bg-[rgba(255,250,240,0.6)] p-3 sm:p-4">
                 <div className="text-sm font-black text-app-text mb-3">请选择你的路线</div>
                 <div className="space-y-3">
                   {planning.paths.map((p) => {
@@ -454,14 +454,14 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                         key={p.id}
                         type="button"
                         onClick={() => setSelectedPathId(p.id)}
-                        className={`w-full text-left rounded-2xl border-2 p-4 transition-all ${
+                        className={`w-full text-left rounded-2xl border-2 p-3 sm:p-4 transition-all ${
                           active
                             ? 'bg-[rgba(255,250,240,0.9)] border-skill-core shadow-md shadow-skill-core/10'
                             : 'bg-[rgba(255,250,240,0.6)] border-[rgba(214,176,165,0.3)] hover:border-skill-core/50 hover:bg-[rgba(255,250,240,0.8)]'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className={`font-bold ${active ? 'text-skill-core' : 'text-app-text'}`}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className={`font-bold text-sm sm:text-base ${active ? 'text-skill-core' : 'text-app-text'}`}>
                             {p.name}
                             {isRecommended && <span className="ml-2 text-[10px] bg-skill-core/10 text-skill-core px-2 py-0.5 rounded-full font-bold">推荐</span>}
                           </div>
@@ -491,8 +491,8 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
             </div>
           )}
 
-          <div className="flex space-x-4">
-            <button onClick={handlePrev} className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+            <button onClick={handlePrev} className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-bold transition-all">
               <ChevronLeft size={20} />
               返回
             </button>
@@ -500,7 +500,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
               <button 
                 onClick={handleSubmit}
                 disabled={isLoading || !getPlanMeta()?.selectedPathId}
-                className="btn-primary flex flex-[3] items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50"
+                className="btn-primary flex flex-[3] items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-black transition-all disabled:opacity-50"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -518,7 +518,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
               <button 
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="btn-primary flex flex-[3] items-center justify-center gap-2 rounded-2xl py-5 font-black transition-all disabled:opacity-50"
+                className="btn-primary flex flex-[3] items-center justify-center gap-2 rounded-2xl py-4 sm:py-5 font-black transition-all disabled:opacity-50"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
