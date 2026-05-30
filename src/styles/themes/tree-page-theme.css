@@ -1,0 +1,404 @@
+/* TreePage 技能树页面主题适配样式 */
+
+/* ========== 六一主题 - 技能树页面 ========== */
+[data-theme="childrens_day"] .tree-page-container {
+  /* 左侧悬浮栏增强 */
+  background: linear-gradient(135deg, rgba(255,230,245,0.95), rgba(229,255,252,0.95)) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-panel {
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,240,248,0.98)) !important;
+  border: 3px solid !important;
+  border-color: #FF6B9D !important;
+  box-shadow:
+    0 20px 60px rgba(255, 107, 157, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.8) !important;
+  border-radius: 32px !important;
+}
+
+[data-theme="childrens_day"] .tree-page-section-kicker {
+  background: linear-gradient(135deg, rgba(255,107,157,0.15), rgba(78,205,196,0.15)) !important;
+  border: 2px solid !important;
+  border-color: rgba(255, 107, 157, 0.4) !important;
+  color: #D45080 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.2) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-title {
+  color: #2D1F3D !important;
+  text-shadow: 0 2px 4px rgba(255, 107, 157, 0.1) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-summary {
+  color: #5D4E6D !important;
+}
+
+[data-theme="childrens_day"] .tree-page-stats-card {
+  background: linear-gradient(135deg, rgba(255,107,157,0.08), rgba(166,108,255,0.08)) !important;
+  border: 2px solid rgba(255, 107, 157, 0.3) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 24px rgba(255, 107, 157, 0.15) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-stat-value {
+  color: #FF6B9D !important;
+  text-shadow: 0 2px 8px rgba(255, 107, 157, 0.3) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-stat-label {
+  color: #9B8AA6 !important;
+}
+
+[data-theme="childrens_day"] .tree-page-divider {
+  background: linear-gradient(90deg, transparent, rgba(255,107,157,0.4), transparent) !important;
+  height: 2px !important;
+}
+
+[data-theme="childrens_day"] .tree-page-btn-secondary {
+  background: linear-gradient(135deg, #ffffff, #FFF5FA) !important;
+  border: 2px solid rgba(255, 107, 157, 0.4) !important;
+  color: #D45080 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.15) !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-theme="childrens_day"] .tree-page-btn-secondary:hover {
+  background: linear-gradient(135deg, #FFE5F0, #FFD5EA) !important;
+  border-color: #FF6B9D !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 10px 30px rgba(255, 107, 157, 0.25) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-btn-primary {
+  background: linear-gradient(135deg, #FF6B9D, #D45080) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(255, 107, 157, 0.35) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-btn-primary:hover {
+  background: linear-gradient(135deg, #FF85AD, #E06090) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 12px 36px rgba(255, 107, 157, 0.45) !important;
+}
+
+/* 右侧详情面板 */
+[data-theme="childrens_day"] .tree-page-detail-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,240,248,0.98)) !important;
+  border-left: 3px solid !important;
+  border-left-color: #FF6B9D !important;
+  box-shadow: -20px 0 60px rgba(255, 107, 157, 0.2) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-node-title {
+  color: #2D1F3D !important;
+  border-bottom: 3px solid !important;
+  border-bottom-color: #FF6B9D !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 16px !important;
+}
+
+[data-theme="childrens_day"] .tree-page-node-description {
+  color: #5D4E6D !important;
+  line-height: 1.8 !important;
+}
+
+[data-theme="childrens_day"] .tree-page-node-tag {
+  background: linear-gradient(135deg, rgba(255,107,157,0.15), rgba(166,108,255,0.15)) !important;
+  border: 2px solid rgba(255, 107, 157, 0.3) !important;
+  color: #D45080 !important;
+  border-radius: 12px !important;
+}
+
+[data-theme="childrens_day"] .tree-page-progress-bar {
+  background: linear-gradient(90deg, #FFE5F0, #FFD5EA) !important;
+  border-radius: 12px !important;
+  height: 14px !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.1) !important;
+}
+
+[data-theme="childrens_day"] .tree-page-progress-fill {
+  background: linear-gradient(90deg, #FF6B9D, #D45080) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(255, 107, 157, 0.4) !important;
+}
+
+/* ========== 成长主题 - 技能树页面 ========== */
+[data-theme="growth"] .tree-page-container {
+  background: linear-gradient(135deg, rgba(240,255,244,0.95), rgba(198,246,213,0.95)) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+[data-theme="growth"] .tree-page-panel {
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(240,255,244,0.98)) !important;
+  border: 3px solid !important;
+  border-color: #48BB78 !important;
+  box-shadow:
+    0 20px 60px rgba(72, 187, 120, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.8) !important;
+  border-radius: 28px !important;
+}
+
+[data-theme="growth"] .tree-page-section-kicker {
+  background: linear-gradient(135deg, rgba(72,187,120,0.15), rgba(104,211,145,0.15)) !important;
+  border: 2px solid !important;
+  border-color: rgba(72, 187, 120, 0.4) !important;
+  color: #2D7A4A !important;
+  border-radius: 10px !important;
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.15) !important;
+}
+
+[data-theme="growth"] .tree-page-title {
+  color: #1A3D1A !important;
+  text-shadow: 0 2px 4px rgba(72, 187, 120, 0.1) !important;
+}
+
+[data-theme="growth"] .tree-page-summary {
+  color: #2D5A2D !important;
+}
+
+[data-theme="growth"] .tree-page-stats-card {
+  background: linear-gradient(135deg, rgba(72,187,120,0.08), rgba(154,230,180,0.08)) !important;
+  border: 2px solid rgba(72, 187, 120, 0.3) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 24px rgba(72, 187, 120, 0.12) !important;
+}
+
+[data-theme="growth"] .tree-page-stat-value {
+  color: #48BB78 !important;
+  text-shadow: 0 2px 8px rgba(72, 187, 120, 0.3) !important;
+}
+
+[data-theme="growth"] .tree-page-stat-label {
+  color: #2D7A4A !important;
+}
+
+[data-theme="growth"] .tree-page-divider {
+  background: linear-gradient(90deg, transparent, rgba(72,187,120,0.4), transparent) !important;
+  height: 2px !important;
+}
+
+[data-theme="growth"] .tree-page-btn-secondary {
+  background: linear-gradient(135deg, #ffffff, #F0FFF4) !important;
+  border: 2px solid rgba(72, 187, 120, 0.4) !important;
+  color: #2D7A4A !important;
+  border-radius: 14px !important;
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.12) !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-theme="growth"] .tree-page-btn-secondary:hover {
+  background: linear-gradient(135deg, #C6F6D5, #9AE6B4) !important;
+  border-color: #48BB78 !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 10px 30px rgba(72, 187, 120, 0.22) !important;
+}
+
+[data-theme="growth"] .tree-page-btn-primary {
+  background: linear-gradient(135deg, #48BB78, #2D7A4A) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px rgba(72, 187, 120, 0.3) !important;
+}
+
+[data-theme="growth"] .tree-page-btn-primary:hover {
+  background: linear-gradient(135deg, #68D391, #38B2AC) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 12px 36px rgba(72, 187, 120, 0.4) !important;
+}
+
+/* 右侧详情面板 */
+[data-theme="growth"] .tree-page-detail-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(240,255,244,0.98)) !important;
+  border-left: 3px solid !important;
+  border-left-color: #48BB78 !important;
+  box-shadow: -20px 0 60px rgba(72, 187, 120, 0.15) !important;
+}
+
+[data-theme="growth"] .tree-page-node-title {
+  color: #1A3D1A !important;
+  border-bottom: 3px solid !important;
+  border-bottom-color: #48BB78 !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 16px !important;
+}
+
+[data-theme="growth"] .tree-page-node-description {
+  color: #2D5A2D !important;
+  line-height: 1.8 !important;
+}
+
+[data-theme="growth"] .tree-page-node-tag {
+  background: linear-gradient(135deg, rgba(72,187,120,0.15), rgba(154,230,180,0.15)) !important;
+  border: 2px solid rgba(72, 187, 120, 0.3) !important;
+  color: #2D7A4A !important;
+  border-radius: 10px !important;
+}
+
+[data-theme="growth"] .tree-page-progress-bar {
+  background: linear-gradient(90deg, #C6F6D5, #9AE6B4) !important;
+  border-radius: 10px !important;
+  height: 12px !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.08) !important;
+}
+
+[data-theme="growth"] .tree-page-progress-fill {
+  background: linear-gradient(90deg, #48BB78, #38B2AC) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(72, 187, 120, 0.4) !important;
+}
+
+/* ========== 潜沉主题 - 技能树页面 ========== */
+[data-theme="quiet_growth"] .tree-page-container {
+  background: linear-gradient(135deg, rgba(26,26,46,0.95), rgba(22,33,62,0.95)) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-panel {
+  background: linear-gradient(135deg, rgba(40,40,60,0.95), rgba(30,30,46,0.95)) !important;
+  border: 2px solid !important;
+  border-color: rgba(80,80,120,0.5) !important;
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  border-radius: 16px !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-section-kicker {
+  background: rgba(155, 138, 166, 0.1) !important;
+  border: 1px solid !important;
+  border-color: rgba(155, 138, 166, 0.3) !important;
+  color: #9B8AA6 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-title {
+  color: #D0D0E0 !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-summary {
+  color: #9090A8 !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-stats-card {
+  background: rgba(50, 50, 70, 0.8) !important;
+  border: 1px solid rgba(80, 80, 120, 0.4) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-stat-value {
+  color: #9B8AA6 !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-stat-label {
+  color: #8080A0 !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-divider {
+  background: linear-gradient(90deg, transparent, rgba(80,80,120,0.5), transparent) !important;
+  height: 1px !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-btn-secondary {
+  background: rgba(60, 60, 80, 0.8) !important;
+  border: 1px solid rgba(80, 80, 120, 0.4) !important;
+  color: #8080A0 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-btn-secondary:hover {
+  background: rgba(70, 70, 90, 0.9) !important;
+  border-color: #9B8AA6 !important;
+  color: #9B8AA6 !important;
+  transform: translateY(-1px) scale(1.01) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-btn-primary {
+  background: linear-gradient(135deg, #6B7280, #5A5A7A) !important;
+  border: none !important;
+  color: #E0E0E8 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-btn-primary:hover {
+  background: linear-gradient(135deg, #7B7B8A, #6A6A7A) !important;
+  transform: translateY(-1px) scale(1.01) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 右侧详情面板 */
+[data-theme="quiet_growth"] .tree-page-detail-panel {
+  background: linear-gradient(180deg, rgba(40,40,60,0.98), rgba(30,30,46,0.98)) !important;
+  border-left: 2px solid !important;
+  border-left-color: rgba(80,80,120,0.5) !important;
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-node-title {
+  color: #D0D0E0 !important;
+  border-bottom: 2px solid !important;
+  border-bottom-color: rgba(80,80,120,0.5) !important;
+  padding-bottom: 10px !important;
+  margin-bottom: 14px !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-node-description {
+  color: #9090A8 !important;
+  line-height: 1.7 !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-node-tag {
+  background: rgba(155, 138, 166, 0.1) !important;
+  border: 1px solid rgba(155, 138, 166, 0.3) !important;
+  color: #9B8AA6 !important;
+  border-radius: 6px !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-progress-bar {
+  background: rgba(30, 30, 46, 0.8) !important;
+  border-radius: 6px !important;
+  height: 10px !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.3) !important;
+}
+
+[data-theme="quiet_growth"] .tree-page-progress-fill {
+  background: linear-gradient(90deg, #6B7280, #9B8AA6) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(155, 138, 166, 0.3) !important;
+}
+
+/* ========== 默认主题 - 保持原样 ========== */
+[data-theme="default"] .tree-page-container,
+[data-theme="default"] .tree-page-panel,
+[data-theme="default"] .tree-page-detail-panel {
+  /* 使用全局的 panel-card 样式 */
+}
+
+/* ========== 响应式调整 ========== */
+@media (max-width: 768px) {
+  [data-theme="childrens_day"] .tree-page-panel,
+  [data-theme="growth"] .tree-page-panel,
+  [data-theme="quiet_growth"] .tree-page-panel {
+    border-radius: 16px !important;
+    margin: 8px !important;
+  }
+
+  [data-theme="childrens_day"] .tree-page-detail-panel,
+  [data-theme="growth"] .tree-page-detail-panel,
+  [data-theme="quiet_growth"] .tree-page-detail-panel {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 2px solid !important;
+  }
+}

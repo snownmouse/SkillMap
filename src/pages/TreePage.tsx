@@ -349,8 +349,8 @@ const TreePage: React.FC = () => {
         </div>
 
         {/* 顶部悬浮信息栏 - 改为半透明紧凑设计 */}
-        <div className="pointer-events-none absolute left-2 right-2 top-2 sm:left-6 sm:top-6 z-10 max-w-md">
-          <div className="pointer-events-auto flex flex-col gap-2 sm:gap-3">
+        <div className="tree-page-container pointer-events-none absolute left-2 right-2 top-2 sm:left-6 sm:top-6 z-10 max-w-md">
+          <div className="tree-page-panel pointer-events-auto flex flex-col gap-2 sm:gap-3">
             <div className="flex items-center gap-3">
               <TreeSwitcher
                 currentTreeId={skillTree?.id}
@@ -378,12 +378,12 @@ const TreePage: React.FC = () => {
               <div className="panel-card-soft flex flex-col gap-3 sm:gap-4 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4">
                 <div className="flex items-start justify-between gap-2 sm:gap-4">
                   <div className="min-w-0 flex-1">
-                    <div className="section-kicker mb-2 text-xs sm:text-sm">
+                    <div className="tree-page-section-kicker section-kicker mb-2 text-xs sm:text-sm">
                       <Sparkles size={12} />
                       成长地图
                     </div>
-                    <h1 className="truncate text-base sm:text-xl font-black text-app-text">{skillTree.career}</h1>
-                    <p className="mt-2 text-xs sm:text-sm leading-5 sm:leading-6 text-app-muted line-clamp-2 sm:line-clamp-none">{skillTree.summary}</p>
+                    <h1 className="tree-page-title truncate text-base sm:text-xl font-black text-app-text">{skillTree.career}</h1>
+                    <p className="tree-page-summary mt-2 text-xs sm:text-sm leading-5 sm:leading-6 text-app-muted line-clamp-2 sm:line-clamp-none">{skillTree.summary}</p>
                   </div>
                   <button
                     type="button"
@@ -410,28 +410,28 @@ const TreePage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 sm:gap-4">
+                <div className="tree-page-stats-card flex items-center gap-3 sm:gap-4">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-app-muted mb-1">
                       <Radar size={12} />
                       进度
                     </div>
-                    <div className="text-base sm:text-lg font-black text-skill-core">{overallProgress}%</div>
+                    <div className="tree-page-stat-value text-base sm:text-lg font-black text-skill-core">{overallProgress}%</div>
                   </div>
-                  <div className="w-[1px] h-6 sm:h-8 bg-app-border"></div>
+                  <div className="tree-page-divider w-[1px] h-6 sm:h-8 bg-app-border"></div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-app-muted mb-1">
                       <GitBranch size={12} />
                       已解锁
                     </div>
-                    <div className="text-base sm:text-lg font-black text-status-completed">{unlockedCount}/{nodes.length}</div>
+                    <div className="tree-page-stat-value text-base sm:text-lg font-black text-status-completed">{unlockedCount}/{nodes.length}</div>
                   </div>
-                  <div className="w-[1px] h-6 sm:h-8 bg-app-border"></div>
+                  <div className="tree-page-divider w-[1px] h-6 sm:h-8 bg-app-border"></div>
                   <div className="flex flex-col">
                     <div className="text-[10px] uppercase tracking-[0.1em] text-app-muted mb-1">
                       预计周期
                     </div>
-                    <div className="text-base sm:text-lg font-black text-app-text">{skillTree.estimatedMonths || '-'} 月</div>
+                    <div className="tree-page-stat-value text-base sm:text-lg font-black text-app-text">{skillTree.estimatedMonths || '-'} 月</div>
                   </div>
                 </div>
 
@@ -448,7 +448,7 @@ const TreePage: React.FC = () => {
                       type="button"
                       onClick={handleExportHtml}
                       disabled={isExportingHtml}
-                      className="btn-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                      className="tree-page-btn-secondary btn-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Download size={14} />
                       {isExportingHtml ? '导出中...' : '导出 HTML'}
@@ -457,7 +457,7 @@ const TreePage: React.FC = () => {
                       type="button"
                       onClick={handleExportPackage}
                       disabled={isExportingPackage}
-                      className="btn-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                      className="tree-page-btn-secondary btn-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <FileUp size={14} />
                       {isExportingPackage ? '导出中...' : '导出'}
@@ -466,7 +466,7 @@ const TreePage: React.FC = () => {
                       type="button"
                       onClick={handleImportClick}
                       disabled={isImporting}
-                      className="btn-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                      className="tree-page-btn-secondary btn-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <FolderUp size={14} />
                       {isImporting ? '导入中...' : '导入'}
@@ -476,7 +476,7 @@ const TreePage: React.FC = () => {
                         type="button"
                         onClick={handleExpand}
                         disabled={isExpanding}
-                        className="btn-primary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                        className="tree-page-btn-primary btn-primary inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <Plus size={14} />
                         {isExpanding ? '展开中...' : '展开'}
@@ -496,7 +496,7 @@ const TreePage: React.FC = () => {
 
         {/* 详情面板 */}
         {activeNode && (
-          <div className="absolute inset-y-0 right-0 z-20 w-full sm:w-[400px]">
+          <div className="tree-page-detail-panel absolute inset-y-0 right-0 z-20 w-full sm:w-[400px]">
             <SkillNodeDetail 
               node={activeNode} 
               treeId={treeId || skillTree?.id}
