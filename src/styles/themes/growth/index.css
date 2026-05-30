@@ -3,8 +3,8 @@
   --color-app-bg: #F0FFF4;
   --color-app-surface: rgba(255, 255, 255, 0.96);
   --color-app-border: rgba(72, 187, 120, 0.4);
-  --color-app-text: #22543D;
-  --color-app-muted: #68D391;
+  --color-app-text: #1A3D1A;
+  --color-app-muted: #2D5A2D;
 
   --color-skill-core: #48BB78;
   --color-skill-specialization: #38B2AC;
@@ -31,7 +31,7 @@
   ) !important;
   background-size: 400% 400% !important;
   animation: green-shift 12s ease infinite !important;
-  color: #22543D !important;
+  color: #1A3D1A !important;
 }
 
 [data-theme="growth"] #root {
@@ -44,7 +44,7 @@
 
 /* 树叶装饰层 */
 [data-theme="growth"] .app-shell::before {
-  content: "🌱 🌿 🍃 🌾 ☘️ 🌴 🌳 🍀 🌵 🌴 🌿 🍃";
+  content: "🌱 🌿 🍃 🌾 ☘️ 🌴 🌳 🍀 🌵 🌴 🌿 🍃 🌱 🌿 🍃 🌾";
   position: fixed;
   top: 0;
   left: 0;
@@ -52,23 +52,47 @@
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.1;
-  font-size: 48px;
-  line-height: 1.5;
-  word-spacing: 20px;
-  letter-spacing: 5px;
+  opacity: 0.12;
+  font-size: 52px;
+  line-height: 1.7;
+  word-spacing: 24px;
+  letter-spacing: 6px;
   text-align: center;
-  padding: 40px;
+  padding: 50px;
   user-select: none;
-  filter: drop-shadow(0 4px 12px rgba(72, 187, 120, 0.2));
-  animation: sway-leaves 15s ease-in-out infinite;
+  filter: drop-shadow(0 6px 16px rgba(72, 187, 120, 0.25));
+  animation: sway-leaves 12s ease-in-out infinite;
 }
 
 @keyframes sway-leaves {
-  0%, 100% { transform: rotate(-2deg) scale(1); }
-  25% { transform: rotate(2deg) scale(1.02); }
-  50% { transform: rotate(-1deg) scale(0.98); }
-  75% { transform: rotate(3deg) scale(1.01); }
+  0%, 100% { transform: rotate(-3deg) scale(1); }
+  25% { transform: rotate(3deg) scale(1.03); }
+  50% { transform: rotate(-2deg) scale(0.97); }
+  75% { transform: rotate(4deg) scale(1.02); }
+}
+
+/* 额外的绿色圆形装饰 */
+[data-theme="growth"] .app-shell::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 15% 25%, rgba(72, 187, 120, 0.2) 0%, transparent 25%),
+    radial-gradient(circle at 85% 35%, rgba(56, 178, 172, 0.18) 0%, transparent 22%),
+    radial-gradient(circle at 45% 65%, rgba(104, 211, 145, 0.2) 0%, transparent 25%),
+    radial-gradient(circle at 25% 85%, rgba(72, 187, 120, 0.18) 0%, transparent 22%),
+    radial-gradient(circle at 75% 75%, rgba(56, 178, 172, 0.2) 0%, transparent 25%);
+  animation: breathe-green 8s ease-in-out infinite;
+}
+
+@keyframes breathe-green {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.08); }
 }
 
 [data-theme="growth"] .app-container {

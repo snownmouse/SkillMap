@@ -3,8 +3,8 @@
   --color-app-bg: #FFF0F8;
   --color-app-surface: rgba(255, 255, 255, 0.96);
   --color-app-border: rgba(255, 107, 157, 0.5);
-  --color-app-text: #5D4E6D;
-  --color-app-muted: #9B8AA6;
+  --color-app-text: #2D1F3D;
+  --color-app-muted: #6B5A7A;
 
   --color-skill-core: #FF6B9D;
   --color-skill-specialization: #4ECDC4;
@@ -32,7 +32,7 @@
   ) !important;
   background-size: 100% 400% !important;
   animation: candy-rainbow 15s ease infinite !important;
-  color: #5D4E6D !important;
+  color: #2D1F3D !important;
 }
 
 [data-theme="childrens_day"] #root {
@@ -45,7 +45,7 @@
 
 /* 糖果装饰层 */
 [data-theme="childrens_day"] .app-shell::before {
-  content: "🍭 🍬 🍫 🍪 🎂 🍰 🎈 🎀 ✨ 🌟 🌈 ⭐";
+  content: "🍭 🍬 🍫 🍪 🎂 🍰 🎈 🎀 ✨ 🌟 🌈 ⭐ 🍭 🍬 🎈 🎀";
   position: fixed;
   top: 0;
   left: 0;
@@ -53,21 +53,46 @@
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.08;
-  font-size: 52px;
-  line-height: 1.6;
-  word-spacing: 24px;
-  letter-spacing: 6px;
+  opacity: 0.1;
+  font-size: 56px;
+  line-height: 1.8;
+  word-spacing: 28px;
+  letter-spacing: 8px;
   text-align: center;
-  padding: 50px;
+  padding: 60px;
   user-select: none;
-  filter: drop-shadow(0 6px 16px rgba(255, 107, 157, 0.25));
-  animation: float-candy 20s linear infinite;
+  filter: drop-shadow(0 8px 20px rgba(255, 107, 157, 0.3));
+  animation: float-candy 18s linear infinite;
 }
 
 @keyframes float-candy {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-100px); }
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-80px) rotate(5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+/* 额外的彩色圆形装饰 */
+[data-theme="childrens_day"] .app-shell::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(255, 107, 157, 0.15) 0%, transparent 20%),
+    radial-gradient(circle at 90% 30%, rgba(78, 205, 196, 0.15) 0%, transparent 20%),
+    radial-gradient(circle at 50% 60%, rgba(166, 108, 255, 0.15) 0%, transparent 20%),
+    radial-gradient(circle at 20% 80%, rgba(255, 179, 71, 0.15) 0%, transparent 20%),
+    radial-gradient(circle at 80% 90%, rgba(255, 107, 157, 0.15) 0%, transparent 20%);
+  animation: pulse-circles 10s ease-in-out infinite;
+}
+
+@keyframes pulse-circles {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
 }
 
 [data-theme="childrens_day"] .app-container {
