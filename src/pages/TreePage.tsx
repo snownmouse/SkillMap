@@ -340,8 +340,8 @@ const TreePage: React.FC = () => {
   return (
     <AppLayout>
       <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden">
-        {/* 画布（放在底层） */}
-        <div className="absolute inset-0 z-0">
+        {/* 画布容器 - 确保正确的层叠和裁剪 */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <SkillTreeCanvas
             data={skillTree}
             onNodeClick={(id) => setActiveNode(id)}
