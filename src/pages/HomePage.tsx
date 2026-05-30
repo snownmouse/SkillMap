@@ -7,7 +7,7 @@ import { Bot, BrainCircuit, GitBranch, Radar, Sparkles, Target } from 'lucide-re
  */
 const HomePage: React.FC = () => {
   return (
-    <div className="app-shell px-4 py-6 md:px-6 flex items-center justify-center min-h-[calc(100vh-80px)]">
+    <div className="px-4 py-6 md:px-6 flex items-center justify-center min-h-[calc(100vh-80px)]">
       <div className="app-container max-w-4xl w-full">
         <div className="page-hero text-center space-y-10">
           
@@ -36,7 +36,7 @@ const HomePage: React.FC = () => {
               to="/generate"
               className="btn-primary inline-flex items-center justify-center rounded-2xl px-8 py-4 text-lg font-black transition-all shadow-xl shadow-skill-core/20"
             >
-              开始生成我的 SkillMap
+              开始生成我的技能树
             </Link>
             <Link 
               to="/tree"

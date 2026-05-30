@@ -81,14 +81,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-app-bg flex items-center justify-center p-6">
+    <div className="flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <div className="inline-flex h-14 w-14 items-center justify-center bg-skill-core/10 rounded-2xl border border-skill-core/20 mb-4 shadow-sm">
             <span className="text-3xl">🗺️</span>
           </div>
           <h1 className="text-4xl font-black text-app-text tracking-tight">
-            Skill<span className="text-skill-core">Map</span>
+            栖舟寻志
           </h1>
           <p className="mt-2 text-app-muted">
             {isRegister ? '创建账号，保存你的成长数据' : '登录账号，继续你的成长之旅'}
