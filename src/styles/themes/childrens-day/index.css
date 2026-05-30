@@ -1,37 +1,38 @@
-/* 六一儿童节主题样式 - 糖果彩虹风格，区别于情人节 */
+/* 六一儿童节主题 - 超明显糖果彩虹风格！ */
 [data-theme="childrens_day"] {
-  --color-app-bg: #FFF9F0;
-  --color-app-surface: rgba(255, 249, 240, 0.9);
-  --color-app-border: rgba(255, 183, 0, 0.3);
-  --color-app-text: #5D5A4A;
-  --color-app-muted: #8B8680;
+  --color-app-bg: #FFF0F8;
+  --color-app-surface: rgba(255, 255, 255, 0.96);
+  --color-app-border: rgba(255, 107, 157, 0.5);
+  --color-app-text: #3D3D3D;
+  --color-app-muted: #7A7A7A;
 
-  --color-skill-core: #FF9F43;
-  --color-skill-specialization: #7ED6DF;
-  --color-skill-general: #A29BFE;
+  --color-skill-core: #FF6B9D;
+  --color-skill-specialization: #4ECDC4;
+  --color-skill-general: #A66CFF;
 
-  --color-status-locked: #DFE6E9;
-  --color-status-available: #FF9F43;
-  --color-status-inProgress: #FF6B81;
-  --color-status-completed: #55EFC4;
+  --color-status-locked: #E0E0E0;
+  --color-status-available: #FFB347;
+  --color-status-inProgress: #FF6B9D;
+  --color-status-completed: #4ECDC4;
 
-  --radius-xl: 16px;
-  --radius-2xl: 24px;
+  --radius-xl: 32px;
+  --radius-2xl: 48px;
 }
 
-/* 背景：温暖的奶油色+彩色点缀 */
+/* 背景：非常明显的彩色糖果渐变！ */
 [data-theme="childrens_day"] body {
   background: linear-gradient(
-    135deg,
-    #FFF9F0 0%,
-    #FFF5E6 25%,
-    #F0F9FF 50%,
-    #F5FFF0 75%,
-    #FFF9F0 100%
+    180deg,
+    #FFE5F0 0%,
+    #E5FFFC 20%,
+    #FFF5E5 40%,
+    #F0E5FF 60%,
+    #E5F5FF 80%,
+    #FFE5F0 100%
   ) !important;
-  background-size: 400% 400% !important;
-  animation: rainbow-shift 20s ease infinite !important;
-  color: #5D5A4A !important;
+  background-size: 100% 400% !important;
+  animation: candy-rainbow 15s ease infinite !important;
+  color: #3D3D3D !important;
 }
 
 [data-theme="childrens_day"] #root {
@@ -43,17 +44,23 @@
 }
 
 [data-theme="childrens_day"] .app-shell::before {
-  content: "";
+  content: "🍭 🍬 🍫 🍪 🎂 🍰 🎈 🎀 ✨ 🌟 🌈";
   position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(255, 159, 67, 0.15), transparent 30%),
-    radial-gradient(circle at 80% 20%, rgba(126, 214, 223, 0.12), transparent 25%),
-    radial-gradient(circle at 60% 80%, rgba(162, 155, 254, 0.1), transparent 30%),
-    radial-gradient(circle at 10% 70%, rgba(85, 239, 196, 0.08), transparent 25%),
-    radial-gradient(circle at 90% 60%, rgba(255, 107, 129, 0.08), transparent 25%);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
+  opacity: 0.06;
+  font-size: 48px;
+  line-height: 1.5;
+  word-spacing: 20px;
+  letter-spacing: 5px;
+  text-align: center;
+  padding: 40px;
+  user-select: none;
+  filter: drop-shadow(0 4px 12px rgba(255, 107, 157, 0.2));
 }
 
 [data-theme="childrens_day"] .app-container {
@@ -65,161 +72,194 @@
   padding: 60px 0 36px;
 }
 
-/* 面板：奶油色+彩色边框 */
+/* 面板：超圆润，带彩色边框！ */
 [data-theme="childrens_day"] .panel-card {
-  background: rgba(255, 252, 245, 0.95) !important;
-  border: 3px solid rgba(255, 159, 67, 0.4) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 4px solid transparent !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  background-image:
+    linear-gradient(white, white),
+    linear-gradient(135deg, #FF6B9D, #FFB347, #4ECDC4, #A66CFF, #FF6B9D) !important;
+  background-size: 300% 300% !important;
+  animation: border-rainbow 8s ease infinite !important;
   box-shadow:
-    0 16px 48px rgba(255, 159, 67, 0.12),
-    0 8px 24px rgba(126, 214, 223, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(16px) !important;
+    0 24px 80px rgba(255, 107, 157, 0.25),
+    0 12px 40px rgba(78, 205, 196, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 1) !important;
+  backdrop-filter: blur(24px) !important;
   border-radius: var(--radius-2xl) !important;
 }
 
 [data-theme="childrens_day"] .panel-card-soft {
-  background: rgba(255, 252, 250, 0.9) !important;
-  border: 2px solid rgba(126, 214, 223, 0.3) !important;
-  box-shadow: 0 8px 32px rgba(126, 214, 223, 0.1) !important;
-  backdrop-filter: blur(12px) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 3px solid #FFB347 !important;
+  box-shadow:
+    0 16px 56px rgba(255, 179, 71, 0.2),
+    0 8px 24px rgba(255, 107, 157, 0.12) !important;
+  backdrop-filter: blur(20px) !important;
   border-radius: var(--radius-xl) !important;
 }
 
-/* 按钮：糖果橙色系 */
+/* 按钮：糖果渐变，超大圆角！ */
 [data-theme="childrens_day"] .btn-primary {
-  background: linear-gradient(135deg, #FF9F43, #FF8C42, #FF7F24) !important;
+  background: linear-gradient(135deg, #FF6B9D, #FFB347, #4ECDC4) !important;
+  background-size: 200% 200% !important;
+  animation: button-rainbow 4s ease infinite !important;
   box-shadow:
-    0 10px 32px rgba(255, 159, 67, 0.35),
-    0 4px 12px rgba(255, 127, 80, 0.25) !important;
+    0 16px 48px rgba(255, 107, 157, 0.4),
+    0 8px 24px rgba(255, 179, 71, 0.3) !important;
   border-radius: 999px !important;
   color: white !important;
   border: none !important;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
 [data-theme="childrens_day"] .btn-primary:hover {
-  background: linear-gradient(135deg, #FFB366, #FFA833, #FF9500) !important;
   box-shadow:
-    0 14px 40px rgba(255, 159, 67, 0.45),
-    0 6px 16px rgba(255, 127, 80, 0.35) !important;
-  transform: translateY(-2px) scale(1.03) !important;
+    0 24px 64px rgba(255, 107, 157, 0.5),
+    0 12px 32px rgba(255, 179, 71, 0.4) !important;
+  transform: translateY(-4px) scale(1.06) !important;
 }
 
 [data-theme="childrens_day"] .btn-secondary {
-  background: rgba(255, 255, 250, 0.95) !important;
-  border: 3px solid rgba(126, 214, 223, 0.5) !important;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(166, 108, 255, 0.1)) !important;
+  border: 3px solid #4ECDC4 !important;
   border-radius: 999px !important;
-  color: #7ED6DF !important;
-  box-shadow: 0 8px 24px rgba(126, 214, 223, 0.15) !important;
-  transition: all 0.3s ease !important;
+  color: #4ECDC4 !important;
+  box-shadow: 0 12px 32px rgba(78, 205, 196, 0.2) !important;
+  transition: all 0.35s ease !important;
 }
 
 [data-theme="childrens_day"] .btn-secondary:hover {
-  background: rgba(255, 252, 245, 0.98) !important;
-  border-color: #7ED6DF !important;
-  transform: translateY(-2px) scale(1.02) !important;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.2), rgba(166, 108, 255, 0.2)) !important;
+  border-color: #A66CFF !important;
+  color: #A66CFF !important;
+  transform: translateY(-3px) scale(1.04) !important;
+  box-shadow: 0 16px 40px rgba(166, 108, 255, 0.3) !important;
 }
 
-/* 标签：糖果黄色 */
+/* 标签：糖果彩色！ */
 [data-theme="childrens_day"] .section-kicker {
-  background: linear-gradient(135deg, rgba(255, 183, 0, 0.15), rgba(255, 159, 67, 0.15)) !important;
-  border: 2px solid rgba(255, 183, 0, 0.35) !important;
-  color: #FF9500 !important;
+  background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(78, 205, 196, 0.15)) !important;
+  border: 2px solid #FF6B9D !important;
+  color: #FF6B9D !important;
   border-radius: 999px !important;
-  padding: 10px 20px !important;
-  box-shadow: 0 4px 16px rgba(255, 183, 0, 0.15) !important;
+  padding: 12px 24px !important;
+  box-shadow: 0 8px 24px rgba(255, 107, 157, 0.2) !important;
 }
 
-/* 滚动条：糖果彩色 */
+/* 滚动条：超级糖果彩虹！ */
 [data-theme="childrens_day"] ::-webkit-scrollbar {
-  width: 10px;
+  width: 14px;
 }
 
 [data-theme="childrens_day"] ::-webkit-scrollbar-track {
-  background: rgba(255, 249, 240, 0.5);
-  border-radius: 5px;
+  background: rgba(255, 229, 240, 0.5);
+  border-radius: 7px;
 }
 
 [data-theme="childrens_day"] ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg,
-    rgba(255, 159, 67, 0.6),
-    rgba(126, 214, 223, 0.6),
-    rgba(162, 155, 254, 0.6)
-  );
-  border-radius: 5px;
-  border: 2px solid rgba(255, 249, 240, 0.5);
+    #FF6B9D,
+    #FFB347,
+    #4ECDC4,
+    #A66CFF,
+    #FF6B9D
+  ) !important;
+  background-size: 100% 400% !important;
+  animation: scrollbar-rainbow 6s ease infinite !important;
+  border-radius: 7px;
+  border: 3px solid rgba(255, 255, 255, 0.9);
 }
 
 [data-theme="childrens_day"] ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg,
-    rgba(255, 159, 67, 0.8),
-    rgba(126, 214, 223, 0.8),
-    rgba(162, 155, 254, 0.8)
-  );
+  box-shadow: 0 0 20px rgba(255, 107, 157, 0.6) !important;
 }
 
-/* 输入框：糖果奶油色 */
+/* 输入框：糖果彩色边框！ */
 [data-theme="childrens_day"] input,
 [data-theme="childrens_day"] textarea,
 [data-theme="childrens_day"] select {
-  background: rgba(255, 252, 248, 0.98) !important;
-  border: 2px solid rgba(255, 183, 0, 0.3) !important;
-  border-radius: 16px !important;
-  color: #5D5A4A !important;
-  box-shadow: inset 0 2px 8px rgba(255, 183, 0, 0.05) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 3px solid transparent !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  background-image:
+    linear-gradient(white, white),
+    linear-gradient(135deg, #FFB347, #FF6B9D, #4ECDC4, #A66CFF) !important;
+  border-radius: 20px !important;
+  color: #3D3D3D !important;
+  box-shadow: inset 0 3px 12px rgba(255, 107, 157, 0.08) !important;
 }
 
 [data-theme="childrens_day"] input:focus,
 [data-theme="childrens_day"] textarea:focus,
 [data-theme="childrens_day"] select:focus {
-  border-color: #FF9F43 !important;
   box-shadow:
-    0 0 0 4px rgba(255, 159, 67, 0.12),
-    inset 0 2px 8px rgba(255, 183, 0, 0.05) !important;
+    0 0 0 6px rgba(255, 107, 157, 0.15),
+    inset 0 3px 12px rgba(255, 107, 157, 0.08) !important;
   outline: none !important;
 }
 
 [data-theme="childrens_day"] input::placeholder,
 [data-theme="childrens_day"] textarea::placeholder {
-  color: #B8B4B0 !important;
+  color: #A0A0A0 !important;
 }
 
-/* 链接：糖果青色 */
+/* 链接：糖果彩色！ */
 [data-theme="childrens_day"] a {
-  color: #7ED6DF !important;
-  transition: color 0.3s ease !important;
+  color: #4ECDC4 !important;
+  transition: all 0.3s ease !important;
+  text-decoration: underline wavy #A66CFF !important;
+  text-underline-offset: 4px !important;
 }
 
 [data-theme="childrens_day"] a:hover {
-  color: #55EFC4 !important;
+  color: #FF6B9D !important;
+  text-decoration-color: #FFB347 !important;
 }
 
-/* 动画 */
-@keyframes rainbow-shift {
+/* 动画！ */
+@keyframes candy-rainbow {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 0% 100%; }
+}
+
+@keyframes border-rainbow {
   0%, 100% { background-position: 0% 50%; }
-  25% { background-position: 100% 0%; }
-  50% { background-position: 100% 100%; }
-  75% { background-position: 0% 100%; }
+  50% { background-position: 100% 50%; }
 }
 
-@keyframes candy-bounce {
-  0%, 100% { transform: translateY(0) scale(1); }
-  25% { transform: translateY(-8px) scale(1.02); }
-  50% { transform: translateY(-4px) scale(0.98); }
-  75% { transform: translateY(-12px) scale(1.01); }
+@keyframes button-rainbow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
-@keyframes sparkle-twinkle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.9); }
+@keyframes scrollbar-rainbow {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 0% 100%; }
+}
+
+@keyframes candy-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-16px) rotate(6deg); }
+  50% { transform: translateY(-8px) rotate(-4deg); }
+  75% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes sparkle-pop {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1.5) rotate(180deg); opacity: 1; }
+  100% { transform: scale(1) rotate(360deg); opacity: 1; }
 }
 
 [data-theme="childrens_day"] .animate-pulse-glow {
-  animation: candy-bounce 3s ease-in-out infinite !important;
+  animation: candy-float 3s ease-in-out infinite !important;
 }
 
 [data-theme="childrens_day"] .animate-scale-in {
-  animation: candy-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  animation: sparkle-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
 [data-theme="childrens_day"] .animate-fade-in {
@@ -237,65 +277,77 @@
   }
 }
 
-/* 技能树节点 */
+/* 技能树节点：超级糖果圆形！ */
 [data-theme="childrens_day"] .skill-node {
-  border-radius: 20px !important;
+  border-radius: 999px !important;
+  border: 4px solid !important;
+  border-color: #FF6B9D !important;
+  background: linear-gradient(135deg, #FFF0F8, #FFFFFF) !important;
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-  box-shadow: 0 8px 24px rgba(255, 159, 67, 0.2) !important;
+  box-shadow:
+    0 12px 40px rgba(255, 107, 157, 0.3),
+    0 6px 20px rgba(255, 179, 71, 0.2) !important;
 }
 
 [data-theme="childrens_day"] .skill-node:hover {
-  transform: scale(1.08) !important;
-  box-shadow: 0 16px 48px rgba(255, 159, 67, 0.3) !important;
+  transform: scale(1.15) rotate(5deg) !important;
+  box-shadow:
+    0 24px 72px rgba(255, 107, 157, 0.45),
+    0 12px 36px rgba(255, 179, 71, 0.35) !important;
+  border-color: #FFB347 !important;
 }
 
 [data-theme="childrens_day"] .tree-branch {
-  stroke: rgba(126, 214, 223, 0.7) !important;
-  stroke-width: 4 !important;
+  stroke: url(#candy-gradient) !important;
+  stroke-width: 6px !important;
   stroke-linecap: round !important;
-  filter: drop-shadow(0 2px 6px rgba(126, 214, 223, 0.3)) !important;
+  filter: drop-shadow(0 4px 12px rgba(255, 107, 157, 0.35)) !important;
 }
 
-/* 进度条：糖果彩色 */
+/* 进度条：糖果彩虹！ */
 [data-theme="childrens_day"] input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   background: linear-gradient(90deg,
-    rgba(255, 159, 67, 0.4),
-    rgba(126, 214, 223, 0.4),
-    rgba(162, 155, 254, 0.4)
+    #FF6B9D,
+    #FFB347,
+    #4ECDC4,
+    #A66CFF,
+    #FF6B9D
   );
+  background-size: 400% 100%;
+  animation: button-rainbow 6s ease infinite;
   border-radius: 999px;
-  height: 8px;
+  height: 10px;
 }
 
 [data-theme="childrens_day"] input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #FF9F43, #FF8C42);
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #FF6B9D, #FFB347) !important;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 159, 67, 0.4);
-  border: 3px solid white;
+  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
+  border: 4px solid white;
 }
 
 [data-theme="childrens_day"] input[type="range"]::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #FF9F43, #FF8C42);
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #FF6B9D, #FFB347) !important;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 159, 67, 0.4);
-  border: 3px solid white;
+  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
+  border: 4px solid white;
 }
 
 /* 手机端适配 */
 @media (max-width: 768px) {
   [data-theme="childrens_day"] .panel-card {
-    border-radius: 20px !important;
-    padding: 16px !important;
+    border-radius: 36px !important;
+    padding: 18px !important;
   }
 
   [data-theme="childrens_day"] .page-hero {
@@ -304,14 +356,14 @@
 
   [data-theme="childrens_day"] .btn-primary,
   [data-theme="childrens_day"] .btn-secondary {
-    padding: 12px 20px !important;
+    padding: 14px 22px !important;
     font-size: 14px !important;
   }
 }
 
 @media (max-width: 480px) {
   [data-theme="childrens_day"] .panel-card {
-    border-radius: 16px !important;
-    padding: 14px !important;
+    border-radius: 28px !important;
+    padding: 16px !important;
   }
 }
