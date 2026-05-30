@@ -5,13 +5,12 @@ import TreePage from './pages/TreePage';
 import TimelinePage from './pages/TimelinePage';
 import LoginPage from './pages/LoginPage';
 import { PrivateRoute } from './components/PrivateRoute';
-import SimpleLayout from './components/Layout/SimpleLayout';
 
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<SimpleLayout><HomePage /></SimpleLayout>} />
-      <Route path="/login" element={<SimpleLayout><LoginPage /></SimpleLayout>} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route element={<PrivateRoute />}>
         <Route path="/generate" element={<GeneratePage />} />
         <Route path="/tree" element={<TreePage />} />

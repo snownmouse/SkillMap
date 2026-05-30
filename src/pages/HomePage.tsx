@@ -1,13 +1,26 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Bot, BrainCircuit, GitBranch, Radar, Sparkles, Target } from 'lucide-react';
+import { Bot, BrainCircuit, GitBranch, PartyPopper, Radar, Sparkles, Target } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * 首页
  */
 const HomePage: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
+
   return (
-    <div className="px-4 py-6 md:px-6 flex items-center justify-center min-h-[calc(100vh-80px)]">
+    <div className="app-shell px-4 py-6 md:px-6 flex items-center justify-center min-h-[calc(100vh-80px)] relative">
+      {/* 主题切换按钮 */}
+      <button
+        onClick={toggleTheme}
+        className="fixed top-4 right-4 z-50 rounded-xl border border-skill-core/20 bg-skill-core/10 px-4 py-2 text-sm font-bold text-skill-core transition-all hover:bg-skill-core/20 hover:scale-105 active:scale-95 flex items-center gap-2 shadow-lg"
+        title={theme === 'default' ? '切换到六一主题' : '切换到默认主题'}
+      >
+        <PartyPopper size={18} />
+        <span>{theme === 'default' ? '六一' : '原版'}</span>
+      </button>
+
       <div className="app-container max-w-4xl w-full">
         <div className="page-hero text-center space-y-10">
           
@@ -36,7 +49,7 @@ const HomePage: React.FC = () => {
               to="/generate"
               className="btn-primary inline-flex items-center justify-center rounded-2xl px-8 py-4 text-lg font-black transition-all shadow-xl shadow-skill-core/20"
             >
-              开始生成我的技能树
+              开始生成我的 SkillMap
             </Link>
             <Link 
               to="/tree"
