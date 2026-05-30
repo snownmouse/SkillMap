@@ -15,7 +15,7 @@ interface ChatPanelProps {
 type TabType = 'chat' | 'summary' | 'suggestions';
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, treeId, onBack }) => {
-  const { chatSessions, isChatLoading, loadHistory, sendMessage } = useChat();
+  const { chatSessions, isSending, loadHistory, sendMessage } = useChat();
   const { state } = useAppContext();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<TabType>('chat');
@@ -25,6 +25,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, treeId, onBack }) => {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [summaryVersion, setSummaryVersion] = useState(0);
   const [suggestionsVersion, setSuggestionsVersion] = useState(0);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const session = chatSessions[nodeId];
   const messages = session?.messages || [];
@@ -34,11 +35,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, treeId, onBack }) => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isChatLoading]);
+  }, [messages, isSending(nodeId)]);
 
   useEffect(() => {
-    loadHistory(nodeId);
-  }, [loadHistory, nodeId]);
+    if (messages.length === 0 && !isLoadingHistory) {
+      setIsLoadingHistory(true);
+      loadHistory(nodeId).finally(() => {
+        setIsLoadingHistory(false);
+      });
+    }
+  }, [loadHistory, nodeId, messages.length]);
 
   useEffect(() => {
     if (activeTab === 'summary' && treeId && !isLoadingSummary) {
@@ -108,7 +114,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, treeId, onBack }) => {
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'chat' && (
           <div ref={scrollRef} className="p-4 space-y-4 h-full overflow-y-auto">
-            {messages.length === 0 && !isChatLoading && (
+            {messages.length === 0 && !isLoadingHistory && !isSending(nodeId) && (
               <div className="panel-card-soft rounded-2xl px-4 py-6 text-center">
                 <p className="text-sm italic text-app-muted">
                   🌱 这是你的专属成长日记，你可以问我任何问题...
@@ -120,7 +126,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, treeId, onBack }) => {
               <ChatMessageItem key={msg.id} message={msg} />
             ))}
 
-            {isChatLoading && (
+            {isSending(nodeId) && (
               <div className="flex justify-start">
                 <div className="bg-[rgba(255,250,240,0.6)] border border-[rgba(214,176,165,0.2)] p-3 rounded-[2px] rounded-br-[20px] shadow-sm">
                   <div className="flex flex-col gap-1 items-start">
@@ -579,7 +585,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ nodeId, treeId, onBack }) => {
         <div className="border-t border-app-border bg-app-surface/90 p-4">
           <ChatInput
             onSend={handleSend}
-            disabled={isChatLoading}
+            disabled={isSending(nodeId)}
             aiPendingMessage={aiPendingMessage}
           />
         </div>

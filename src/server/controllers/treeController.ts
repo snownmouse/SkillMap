@@ -482,7 +482,7 @@ async function processTask(taskId: string) {
 
     // 继续生成节点详情
     const nodeIds = Object.keys(skeleton.nodes).filter(id => id !== 'meta_growth');
-    const batchSize = 4;
+    const batchSize = 8; // 增大批处理大小以加速
     const batches: string[][] = [];
     for (let i = 0; i < nodeIds.length; i += batchSize) {
       batches.push(nodeIds.slice(i, i + batchSize));
@@ -1262,36 +1262,38 @@ export const treeController = {
         : Object.keys(treeData.nodes).filter(nid => nid !== 'meta_growth' && !treeData.nodes[nid]?.resources?.length);
 
       if (targetNodeIds.length === 0) {
-        return res.json({ success: true, message: '无需填充的节点', filledNodes: [] });
-      }
-
-      const batchSize = 4;
-      const batches: string[][] = [];
-      for (let i = 0; i < targetNodeIds.length; i += batchSize) {
-        batches.push(targetNodeIds.slice(i, i + batchSize));
+        return res.json({ success: true, message: '无需填充的节点', filledNodes: [], treeData });
       }
 
       const filledNodes: string[] = [];
 
-      await Promise.allSettled(batches.map(async (batch) => {
-        const nodesMeta = batch.map(nid => ({
-          id: nid,
-          name: treeData.nodes[nid]?.name || nid,
-          category: treeData.nodes[nid]?.category || 'general',
-          difficulty: treeData.nodes[nid]?.difficulty || 'beginner',
-        }));
+      // 每个节点单独生成详情，互不影响
+      for (const nid of targetNodeIds) {
+        try {
+          const node = treeData.nodes[nid];
+          const nodeMeta = {
+            id: nid,
+            name: node?.name || nid,
+            category: node?.category || 'general',
+            difficulty: node?.difficulty || 'beginner',
+          };
 
-        const { system, user } = getNodeDetailsPrompt(inputs, nodesMeta, 'full' as DetailLevel);
-        const detailsRaw = await llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined);
-        const details = Array.isArray(detailsRaw) ? detailsRaw : [];
+          const { system, user } = getNodeDetailsPrompt(inputs, [nodeMeta], 'full' as DetailLevel);
+          const detailsRaw = await llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined);
+          const details = Array.isArray(detailsRaw) ? detailsRaw : [];
 
-        for (const detail of details) {
-          const nid = detail?.id;
-          if (!nid || !treeData.nodes[nid]) continue;
-          treeData.nodes[nid] = { ...treeData.nodes[nid], ...detail, id: nid };
-          filledNodes.push(nid);
+          if (details.length > 0) {
+            const detail = details[0];
+            if (detail?.id === nid) {
+              treeData.nodes[nid] = { ...treeData.nodes[nid], ...detail, id: nid };
+              filledNodes.push(nid);
+            }
+          }
+        } catch (error) {
+          logger.error(`节点 ${nid} 处理失败:`, error);
+          // 继续处理其他节点
         }
-      }));
+      }
 
       await pool.query(
         `UPDATE trees SET tree_data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,

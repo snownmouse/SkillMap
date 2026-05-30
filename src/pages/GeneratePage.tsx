@@ -18,7 +18,8 @@ const GeneratePage: React.FC = () => {
   const { setSkillTree, setGenerating, isGenerating, error, setError } = useSkillTree();
   const [career, setCareer] = useState('');
   const [taskId, setTaskId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
+  const [targetProgress, setTargetProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(0);
   const [phase, setPhase] = useState('正在准备...');
   const [preview, setPreview] = useState('');
   const [canRetry, setCanRetry] = useState(false);
@@ -28,8 +29,50 @@ const GeneratePage: React.FC = () => {
   const [nodeCount, setNodeCount] = useState<number>(0);
   const [recentNodes, setRecentNodes] = useState<Array<{ id: string; name: string; category: string }>>([]);
 
+  // 平滑进度条动画 - 10分钟基础进度，有更新时加速
+  useEffect(() => {
+    let animationId: number;
+    let lastTargetUpdate = Date.now();
+    let lastFrameTime = Date.now();
+    const TOTAL_DURATION_MS = 10 * 60 * 1000; // 10分钟
+    const BASE_SPEED_PER_MS = 100 / TOTAL_DURATION_MS; // 每毫秒的基础进度
+    
+    const animate = () => {
+      const now = Date.now();
+      const deltaTime = now - lastFrameTime;
+      lastFrameTime = now;
+      const timeSinceUpdate = now - lastTargetUpdate;
+      
+      setDisplayProgress(prev => {
+        let newProgress = prev;
+        const diff = targetProgress - prev;
+        
+        // 如果目标进度有变化，立即更新
+        if (Math.abs(diff) > 0.1) {
+          lastTargetUpdate = now;
+          // 有新内容生成时，快速接近目标进度
+          const catchUpStep = Math.min(diff * 0.3, 5);
+          newProgress = prev + catchUpStep;
+        } else {
+          // 没有新内容时，按10分钟的基础速度缓慢前进
+          const baseIncrement = BASE_SPEED_PER_MS * deltaTime;
+          newProgress = prev + baseIncrement;
+        }
+        
+        // 确保不超过99%，留一点空间给最后完成
+        return Math.max(0, Math.min(99, newProgress));
+      });
+      
+      // 持续动画，不会停止
+      animationId = requestAnimationFrame(animate);
+    };
+    
+    animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, [targetProgress]);
+
   useTaskWebSocket(taskId, async (update) => {
-    if (update.progress !== undefined) setProgress(update.progress);
+    if (update.progress !== undefined) setTargetProgress(update.progress);
     if (update.phase) setPhase(update.phase);
     if (update.preview) setPreview(update.preview);
     if (update.attempts !== undefined) setAttempts(update.attempts);
@@ -98,7 +141,7 @@ const GeneratePage: React.FC = () => {
             setGenerating(false);
             return;
           }
-          if (status.progress !== undefined) setProgress(status.progress);
+          if (status.progress !== undefined) setTargetProgress(status.progress);
           if (status.phase) setPhase(status.phase);
           if (status.preview) setPreview(status.preview);
           if (status.nodeCount !== undefined) setNodeCount(status.nodeCount);
@@ -119,7 +162,7 @@ const GeneratePage: React.FC = () => {
       setError('无法连接到服务端，获取任务状态失败。请确认服务仍在运行后重试。');
       setGenerating(false);
     }
-  }, [navigate, setError, setGenerating, setPhase, setPreview, setProgress, setSkillTree]);
+  }, [navigate, setError, setGenerating, setPhase, setPreview, setTargetProgress, setSkillTree]);
 
   useEffect(() => {
     const pendingTask = storage.loadPendingTask();
@@ -133,7 +176,7 @@ const GeneratePage: React.FC = () => {
     setAttempts(null);
     setMaxAttempts(null);
     setNextRetryAt(null);
-    setProgress(5);
+    setTargetProgress(5);
     setPhase('正在准备...');
     pollTaskStatus(pendingTask.taskId, new Date(pendingTask.createdAt).getTime());
   }, [pollTaskStatus, setGenerating]);
@@ -146,7 +189,7 @@ const GeneratePage: React.FC = () => {
     setMaxAttempts(null);
     setNextRetryAt(null);
     setCareer(input.career);
-    setProgress(5);
+    setTargetProgress(5);
     setPhase('正在准备...');
     setPreview('');
     try {
@@ -186,7 +229,8 @@ const GeneratePage: React.FC = () => {
       setError(null);
       setCanRetry(false);
       setGenerating(true);
-      setProgress(5);
+      setTargetProgress(5);
+      setDisplayProgress(5);
       setPhase('正在准备...');
       setPreview('');
       await difyApi.retryTask(taskId);
@@ -241,12 +285,12 @@ const GeneratePage: React.FC = () => {
           <div>
             <div className="flex justify-between text-sm text-app-muted mb-2">
               <span>{phase || '正在准备...'}</span>
-              <span>{progress}%</span>
+              <span>{displayProgress.toFixed(1)}%</span>
             </div>
             <div className="h-2 bg-app-surface rounded-full overflow-hidden">
               <div
-                className="h-full bg-skill-core transition-all duration-500 ease-out"
-                style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                className="h-full bg-skill-core transition-all ease-out"
+                style={{ width: `${Math.max(0, Math.min(100, displayProgress))}%` }}
               />
             </div>
           </div>

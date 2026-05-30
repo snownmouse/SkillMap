@@ -4,6 +4,15 @@ import { ChatSession, ChatMessage } from '../types/chat';
 import { storage } from '../services/storage';
 
 /**
+ * 节点详情缓存状态
+ */
+interface NodeDetailCache {
+  isLoading: boolean;
+  node: SkillNode | null;
+  loadedAt: number | null;
+}
+
+/**
  * 全局状态定义
  */
 interface AppState {
@@ -19,6 +28,7 @@ interface AppState {
     refreshToken?: string | null;
     user?: { id: string; username: string; displayName: string } | null;
   } | null;
+  nodeDetailsCache: Record<string, NodeDetailCache>;
 }
 
 type AppAction =
@@ -37,7 +47,10 @@ type AppAction =
   | { type: 'HYDRATE_COMPLETE' }
   | { type: 'ADD_TIMELINE_EVENT'; payload: TimelineEvent }
   | { type: 'UPDATE_NODE_PENDING_MESSAGE'; payload: { nodeId: string; message: string | null } }
-  | { type: 'UPDATE_NODE_COACHING'; payload: { nodeId: string; latestCoaching: CoachSnapshot | null; pendingMessage?: string | null } };
+  | { type: 'UPDATE_NODE_COACHING'; payload: { nodeId: string; latestCoaching: CoachSnapshot | null; pendingMessage?: string | null } }
+  | { type: 'SET_NODE_DETAIL_LOADING'; payload: { nodeId: string; isLoading: boolean } }
+  | { type: 'SET_NODE_DETAIL_DATA'; payload: { nodeId: string; node: SkillNode } }
+  | { type: 'CLEAR_NODE_DETAIL_CACHE'; payload?: { nodeId?: string } };
 
 const initialState: AppState = {
   skillTree: null,
@@ -48,6 +61,7 @@ const initialState: AppState = {
   error: null,
   authHydrated: false,
   auth: null,
+  nodeDetailsCache: {},
 };
 
 const AppContext = createContext<{
@@ -107,8 +121,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
           lastActiveAt: new Date().toISOString(),
         };
       }
-      sessions[nodeId].messages.push(action.payload.message);
-      sessions[nodeId].lastActiveAt = new Date().toISOString();
+      const newMessage = action.payload.message;
+      const existingMessage = sessions[nodeId].messages.find(m => m.id === newMessage.id);
+      if (!existingMessage) {
+        sessions[nodeId].messages.push(newMessage);
+        sessions[nodeId].lastActiveAt = new Date().toISOString();
+      }
       return { ...state, chatSessions: sessions };
     case 'SET_CHAT_HISTORY':
       const existingSession = state.chatSessions[action.payload.nodeId];
@@ -171,6 +189,44 @@ function appReducer(state: AppState, action: AppAction): AppState {
         };
       }
       return { ...state, skillTree: { ...state.skillTree, nodes: nodesWithCoaching } };
+    case 'SET_NODE_DETAIL_LOADING': {
+      const { nodeId, isLoading } = action.payload;
+      const existingCache = state.nodeDetailsCache[nodeId];
+      return {
+        ...state,
+        nodeDetailsCache: {
+          ...state.nodeDetailsCache,
+          [nodeId]: {
+            isLoading,
+            node: existingCache?.node || null,
+            loadedAt: existingCache?.loadedAt || null,
+          }
+        }
+      };
+    }
+    case 'SET_NODE_DETAIL_DATA': {
+      const { nodeId, node } = action.payload;
+      return {
+        ...state,
+        nodeDetailsCache: {
+          ...state.nodeDetailsCache,
+          [nodeId]: {
+            isLoading: false,
+            node,
+            loadedAt: Date.now(),
+          }
+        }
+      };
+    }
+    case 'CLEAR_NODE_DETAIL_CACHE': {
+      const { nodeId } = action.payload || {};
+      if (nodeId) {
+        const newCache = { ...state.nodeDetailsCache };
+        delete newCache[nodeId];
+        return { ...state, nodeDetailsCache: newCache };
+      }
+      return { ...state, nodeDetailsCache: {} };
+    }
     default:
       return state;
   }
@@ -182,11 +238,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 初始化加载
   useEffect(() => {
     const savedState = storage.load();
-    if (savedState) {
+    // 确保 savedState 包含有效的 auth 数据
+    if (savedState && savedState.auth && savedState.auth.token && savedState.auth.user) {
       dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
-      return;
+    } else {
+      dispatch({ type: 'HYDRATE_COMPLETE' });
     }
-    dispatch({ type: 'HYDRATE_COMPLETE' });
   }, []);
 
   // 自动保存

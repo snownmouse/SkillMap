@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface GenerateAnimationProps {
   career: string;
@@ -11,19 +11,36 @@ interface GenerateAnimationProps {
 const GenerateAnimation: React.FC<GenerateAnimationProps> = ({ career, onComplete }) => {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('正在构建核心节点...');
+  const lastFrameTimeRef = useRef(Date.now());
+  const animationIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const totalSteps = 20;
-    const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval);
+    const TOTAL_DURATION_MS = 10 * 60 * 1000; // 10分钟
+    const BASE_SPEED_PER_MS = 100 / TOTAL_DURATION_MS; // 每毫秒的基础进度
+
+    const animate = () => {
+      const now = Date.now();
+      const deltaTime = now - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = now;
+
+      setProgress(prev => {
+        const baseIncrement = BASE_SPEED_PER_MS * deltaTime;
+        const newProgress = prev + baseIncrement;
+        
+        if (newProgress >= 100) {
+          if (animationIdRef.current) {
+            cancelAnimationFrame(animationIdRef.current);
+          }
           setTimeout(onComplete, 1000);
           return 100;
         }
-        return p + (100 / totalSteps);
+        return newProgress;
       });
-    }, 400);
+
+      animationIdRef.current = requestAnimationFrame(animate);
+    };
+
+    animationIdRef.current = requestAnimationFrame(animate);
 
     const statusInterval = setInterval(() => {
       const statuses = [
@@ -38,7 +55,9 @@ const GenerateAnimation: React.FC<GenerateAnimationProps> = ({ career, onComplet
     }, 1500);
 
     return () => {
-      clearInterval(interval);
+      if (animationIdRef.current) {
+        cancelAnimationFrame(animationIdRef.current);
+      }
       clearInterval(statusInterval);
     };
   }, [onComplete]);
@@ -65,11 +84,11 @@ const GenerateAnimation: React.FC<GenerateAnimationProps> = ({ career, onComplet
       <div className="w-64">
         <div className="flex justify-between text-xs text-app-muted mb-2">
           <span>构建进度</span>
-          <span>{Math.round(progress)}%</span>
+          <span>{progress.toFixed(1)}%</span>
         </div>
         <div className="h-1.5 bg-app-surface rounded-full overflow-hidden">
           <div 
-            className="h-full bg-skill-core transition-all duration-500 ease-out"
+            className="h-full bg-skill-core transition-all duration-300 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>

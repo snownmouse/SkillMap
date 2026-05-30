@@ -18,20 +18,26 @@ interface ChatResponseResult {
 
 export function useChat() {
   const { state, dispatch } = useAppContext();
-  const [isSending, setIsSending] = useState(false);
+  const [sendingNodes, setSendingNodes] = useState<Set<string>>(new Set());
   const loadedHistoryRef = useRef<Set<string>>(new Set());
-  const isSendingRef = useRef(false);
   const lastMessageSentRef = useRef<{ nodeId: string; content: string; timestamp: number } | null>(null);
   const stateRef = useRef(state);
+  const messageCounterRef = useRef(0);
   stateRef.current = state;
 
   const loadHistory = useCallback(async (nodeId: string) => {
     const currentState = stateRef.current;
-    if (!currentState.skillTree?.id || loadedHistoryRef.current.has(nodeId)) return;
+    console.log('[loadHistory] 被调用:', nodeId, 'loadedHistoryRef:', Array.from(loadedHistoryRef.current));
+    if (!currentState.skillTree?.id || loadedHistoryRef.current.has(nodeId)) {
+      console.log('[loadHistory] 跳过（已加载或无skillTree）:', nodeId);
+      return;
+    }
 
     const existingSession = currentState.chatSessions[nodeId];
+    console.log('[loadHistory] existingSession:', nodeId, existingSession?.messages?.length);
     if (existingSession?.messages?.length) {
       loadedHistoryRef.current.add(nodeId);
+      console.log('[loadHistory] 跳过（已有消息）:', nodeId, existingSession.messages.length);
       return;
     }
 
@@ -81,15 +87,19 @@ export function useChat() {
   }, [dispatch]);
 
   const sendMessage = async (nodeId: string, content: string) => {
+    console.log('[sendMessage] 被调用:', nodeId, content.substring(0, 30));
     const currentState = stateRef.current;
     const now = Date.now();
     
     // 多层防护机制
-    if (!currentState.skillTree) return;
+    if (!currentState.skillTree) {
+      console.log('[sendMessage] 跳过：无skillTree');
+      return;
+    }
     
-    // 1. 检查是否正在发送
-    if (isSendingRef.current) {
-      console.log('消息正在发送中，防止重复发送');
+    // 1. 检查当前节点是否正在发送
+    if (sendingNodes.has(nodeId)) {
+      console.log('[sendMessage] 跳过：正在发送中', nodeId);
       return;
     }
     
@@ -98,27 +108,32 @@ export function useChat() {
         lastMessageSentRef.current.nodeId === nodeId && 
         lastMessageSentRef.current.content === content && 
         now - lastMessageSentRef.current.timestamp < 1000) {
-      console.log('检测到重复消息，跳过');
+      console.log('[sendMessage] 跳过：重复消息', nodeId);
       return;
     }
 
     const node = currentState.skillTree.nodes[nodeId];
-    if (!node) return;
+    if (!node) {
+      console.log('[sendMessage] 跳过：节点不存在', nodeId);
+      return;
+    }
 
     // 记录这次发送
+    console.log('[sendMessage] 开始发送:', nodeId);
     lastMessageSentRef.current = { nodeId, content, timestamp: now };
-    isSendingRef.current = true;
-    setIsSending(true);
-    dispatch({ type: 'SET_CHAT_LOADING', payload: true });
+    setSendingNodes(prev => new Set([...prev, nodeId]));
 
+    messageCounterRef.current++;
     const userMsg: ChatMessage = {
-      id: now.toString(),
+      id: `msg-${now}-${messageCounterRef.current}`,
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
       nodeId,
     };
     dispatch({ type: 'ADD_CONVERSATION', payload: { nodeId, message: userMsg } });
+    
+    loadedHistoryRef.current.add(nodeId);
 
     try {
       const result = await apiClient.sendChatMessage({
@@ -140,8 +155,9 @@ export function useChat() {
         console.warn('刷新技能树数据失败，使用本地更新:', refreshError);
       }
 
+      messageCounterRef.current++;
       const aiMsg: ChatMessage = {
-        id: (now + 1).toString(),
+        id: `msg-${Date.now()}-${messageCounterRef.current}`,
         role: 'assistant',
         content: result.reply,
         timestamp: new Date().toISOString(),
@@ -209,11 +225,15 @@ export function useChat() {
       console.error('发送消息失败:', e);
       dispatch({ type: 'SET_ERROR', payload: '发送消息失败，请重试' });
     } finally {
-      isSendingRef.current = false;
-      setIsSending(false);
-      dispatch({ type: 'SET_CHAT_LOADING', payload: false });
+      setSendingNodes(prev => {
+        const next = new Set(prev);
+        next.delete(nodeId);
+        return next;
+      });
     }
   };
+
+  const isSending = (nodeId: string) => sendingNodes.has(nodeId);
 
   return {
     chatSessions: state.chatSessions,
