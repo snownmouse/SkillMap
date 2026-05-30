@@ -165,9 +165,12 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
             width: nodeConfig.width,
             height: nodeConfig.height,
             shape: nodeConfig.shape,
-            'background-color': '#ffffff',
-            'border-width': 5,
+            'background-fill': 'linear-gradient',
+            'background-gradient-stop-colors': '#ffffff #FFF5FA',
+            'background-gradient-stop-positions': '0% 100%',
+            'border-width': 6,
             'border-color': '#FF6B9D',
+            'border-style': 'solid',
             'label': 'data(label)',
             'color': '#2D1F3D',
             'text-valign': 'center',
@@ -177,9 +180,12 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
             'text-wrap': 'ellipsis' as const,
             'text-max-width': nodeConfig.textMaxWidth,
             'text-opacity': 1,
-            'transition-property': 'background-color, border-color, width, height, shape',
+            'transition-property': 'background-color, border-color, width, height, shape, border-width',
             'transition-duration': 400,
-            'box-shadow': '0 10px 30px rgba(255, 107, 157, 0.35)'
+            'shadow-blur': 20,
+            'shadow-color': 'rgba(255, 107, 157, 0.4)',
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 4
           }
         },
         {
@@ -187,8 +193,8 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#FFF5E6',
             'border-color': '#FFD93D',
-            'color': '#3D3D3D',
-            'opacity': 0.7
+            'color': '#8B7355',
+            'opacity': 0.6
           }
         },
         {
@@ -196,7 +202,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#FFF0E4',
             'border-color': '#FF9F43',
-            'color': '#3D3D3D'
+            'color': '#8B5A2B'
           }
         },
         {
@@ -204,7 +210,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#FFF8E1',
             'border-color': '#FFB347',
-            'color': '#3D3D3D'
+            'color': '#8B6914'
           }
         },
         {
@@ -212,24 +218,29 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#E8F8F8',
             'border-color': '#4ECDC4',
-            'color': '#3D3D3D'
+            'color': '#2D6B6B'
           }
         },
         {
           selector: 'edge',
           style: {
             'width': 5,
-            'line-color': '#4ECDC4',
+            'line-color': '#FF6B9D',
             'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#4ECDC4',
-            'opacity': 0.8
+            'target-arrow-color': '#FF6B9D',
+            'opacity': 0.8,
+            'shadow-blur': 8,
+            'shadow-color': 'rgba(255, 107, 157, 0.3)',
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 2
           }
         },
         {
           selector: 'edge[type="related"]',
           style: {
             'line-style': 'dashed',
+            'line-dash-pattern': [8, 4],
             'opacity': 0.5
           }
         },
@@ -238,15 +249,16 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'line-color': '#FF9F43',
             'target-arrow-color': '#FF9F43',
-            width: 6
+            width: 7
           }
         },
         {
           selector: 'node:selected',
           style: {
-            'border-width': 6,
+            'border-width': 8,
             'border-color': '#FF9F43',
-            'box-shadow': '0 12px 36px rgba(255, 159, 67, 0.5)'
+            'shadow-blur': 25,
+            'shadow-color': 'rgba(255, 159, 67, 0.5)'
           }
         }
       ] : theme === 'growth' ? [
@@ -256,9 +268,12 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
             width: nodeConfig.width,
             height: nodeConfig.height,
             shape: nodeConfig.shape,
-            'background-color': '#ffffff',
-            'border-width': 3,
+            'background-fill': 'linear-gradient',
+            'background-gradient-stop-colors': '#ffffff #E8F5E9',
+            'background-gradient-stop-positions': '0% 100%',
+            'border-width': 4,
             'border-color': '#48BB78',
+            'border-style': 'solid',
             'label': 'data(label)',
             'color': '#1A3D1A',
             'text-valign': 'center',
@@ -269,8 +284,11 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
             'text-max-width': nodeConfig.textMaxWidth,
             'text-opacity': 1,
             'transition-property': 'background-color, border-color, width, height',
-            'transition-duration': 300,
-            'box-shadow': '0 8px 24px rgba(72, 187, 120, 0.25)'
+            'transition-duration': 350,
+            'shadow-blur': 18,
+            'shadow-color': 'rgba(72, 187, 120, 0.3)',
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 3
           }
         },
         {
@@ -278,7 +296,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#F0FFF4',
             'border-color': '#68D391',
-            'color': '#1A3D1A',
+            'color': '#5A8A5A',
             'opacity': 0.7
           }
         },
@@ -287,7 +305,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#C6F6D5',
             'border-color': '#48BB78',
-            'color': '#1A3D1A'
+            'color': '#1A5A1A'
           }
         },
         {
@@ -295,7 +313,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#9AE6B4',
             'border-color': '#68D391',
-            'color': '#1A3D1A'
+            'color': '#1A6A1A'
           }
         },
         {
@@ -303,25 +321,30 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#68D391',
             'border-color': '#38B2AC',
-            'color': '#1A3D1A'
+            'color': '#1A4A2A'
           }
         },
         {
           selector: 'edge',
           style: {
-            'width': 3,
+            'width': 4,
             'line-color': '#48BB78',
             'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
             'target-arrow-color': '#48BB78',
-            'opacity': 0.7
+            'opacity': 0.75,
+            'shadow-blur': 10,
+            'shadow-color': 'rgba(72, 187, 120, 0.25)',
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 2
           }
         },
         {
           selector: 'edge[type="related"]',
           style: {
             'line-style': 'dashed',
-            'opacity': 0.5
+            'line-dash-pattern': [6, 3],
+            'opacity': 0.55
           }
         },
         {
@@ -329,15 +352,16 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'line-color': '#38B2AC',
             'target-arrow-color': '#38B2AC',
-            width: 4
+            width: 5
           }
         },
         {
           selector: 'node:selected',
           style: {
-            'border-width': 4,
+            'border-width': 5,
             'border-color': '#38B2AC',
-            'box-shadow': '0 12px 36px rgba(72, 187, 120, 0.4)'
+            'shadow-blur': 22,
+            'shadow-color': 'rgba(56, 178, 172, 0.45)'
           }
         }
       ] : theme === 'quiet_growth' ? [
@@ -347,9 +371,12 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
             width: nodeConfig.width,
             height: nodeConfig.height,
             shape: nodeConfig.shape,
-            'background-color': '#2A2A3E',
+            'background-fill': 'linear-gradient',
+            'background-gradient-stop-colors': '#3A3A4E #2A2A3E',
+            'background-gradient-stop-positions': '0% 100%',
             'border-width': 2,
             'border-color': '#6B7280',
+            'border-style': 'solid',
             'label': 'data(label)',
             'color': '#D0D0E0',
             'text-valign': 'center',
@@ -361,16 +388,19 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
             'text-opacity': 1,
             'transition-property': 'background-color, border-color, width, height',
             'transition-duration': 300,
-            'box-shadow': '0 6px 20px rgba(0, 0, 0, 0.35)'
+            'shadow-blur': 15,
+            'shadow-color': 'rgba(0, 0, 0, 0.4)',
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 3
           }
         },
         {
           selector: 'node[status="locked"]',
           style: {
             'background-color': '#1A1A2E',
-            'border-color': '#6B7280',
-            'color': '#D0D0E0',
-            'opacity': 0.6
+            'border-color': '#5A5A6A',
+            'color': '#9090A8',
+            'opacity': 0.5
           }
         },
         {
@@ -378,7 +408,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#2A2A3E',
             'border-color': '#7B7B8A',
-            'color': '#D0D0E0'
+            'color': '#B0B0C0'
           }
         },
         {
@@ -386,7 +416,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'background-color': '#3A3A4E',
             'border-color': '#8B8BA6',
-            'color': '#D0D0E0'
+            'color': '#C0C0D0'
           }
         },
         {
@@ -412,6 +442,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           selector: 'edge[type="related"]',
           style: {
             'line-style': 'dashed',
+            'line-dash-pattern': [4, 4],
             'opacity': 0.4
           }
         },
@@ -428,7 +459,8 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
           style: {
             'border-width': 3,
             'border-color': '#9B8AA6',
-            'box-shadow': '0 10px 30px rgba(0, 0, 0, 0.45)'
+            'shadow-blur': 20,
+            'shadow-color': 'rgba(155, 138, 166, 0.4)'
           }
         }
       ] : [
@@ -701,22 +733,31 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
       className="w-full h-full"
       style={{
         minHeight: '600px',
+        position: 'relative',
+        overflow: 'hidden',
         background: theme === 'childrens_day'
           ? `
-              linear-gradient(90deg, rgba(255,107,157,0.06) 1px, transparent 1px),
-              linear-gradient(rgba(255,107,157,0.06) 1px, transparent 1px),
-              linear-gradient(180deg, #FFE5F0 0%, #E5FFFC 30%, #F0E5FF 60%, #E5F5FF 100%)
+              radial-gradient(circle at 10% 20%, rgba(255,107,157,0.2) 0%, transparent 30%),
+              radial-gradient(circle at 90% 30%, rgba(78,205,196,0.2) 0%, transparent 30%),
+              radial-gradient(circle at 50% 70%, rgba(166,108,255,0.2) 0%, transparent 30%),
+              radial-gradient(circle at 20% 80%, rgba(255,179,71,0.2) 0%, transparent 30%),
+              linear-gradient(180deg, #FFF0F8 0%, #FFE5F0 50%, #F0E5FF 100%)
             `
           : theme === 'growth'
           ? `
-              linear-gradient(90deg, rgba(72,187,120,0.06) 1px, transparent 1px),
-              linear-gradient(rgba(72,187,120,0.06) 1px, transparent 1px),
-              linear-gradient(180deg, #F0FFF4 0%, #C6F6D5 30%, #9AE6B4 60%, #68D391 100%)
+              radial-gradient(circle at 15% 25%, rgba(72,187,120,0.25) 0%, transparent 30%),
+              radial-gradient(circle at 85% 15%, rgba(56,178,172,0.2) 0%, transparent 25%),
+              radial-gradient(circle at 50% 80%, rgba(104,211,145,0.25) 0%, transparent 30%),
+              radial-gradient(circle at 75% 60%, rgba(72,187,120,0.2) 0%, transparent 25%),
+              linear-gradient(180deg, #F0FFF4 0%, #C6F6D5 50%, #9AE6B4 100%)
             `
           : theme === 'quiet_growth'
           ? `
-              linear-gradient(90deg, rgba(155,138,166,0.04) 1px, transparent 1px),
-              linear-gradient(rgba(155,138,166,0.04) 1px, transparent 1px),
+              radial-gradient(circle at 20% 30%, rgba(155,138,166,0.15) 0%, transparent 35%),
+              radial-gradient(circle at 80% 20%, rgba(107,114,128,0.12) 0%, transparent 30%),
+              radial-gradient(circle at 50% 70%, rgba(155,138,166,0.1) 0%, transparent 32%),
+              radial-gradient(circle at 30% 85%, rgba(107,114,128,0.15) 0%, transparent 30%),
+              radial-gradient(circle at 70% 50%, rgba(155,138,166,0.08) 0%, transparent 35%),
               linear-gradient(180deg, #1A1A2E 0%, #16213E 50%, #0F0F1A 100%)
             `
           : `
@@ -724,9 +765,190 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
               linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
               linear-gradient(180deg, #faf9f7 0%, #f5f3f0 40%, #ede8e0 100%)
             `,
-        backgroundSize: '40px 40px, 40px 40px, 100% 100%'
+        backgroundSize: '100% 100%'
       }}
-    />
+    >
+      {/* 主题装饰元素 */}
+      {theme === 'childrens_day' && (
+        <>
+          <div style={{
+            position: 'absolute',
+            top: '10%',
+            left: '5%',
+            fontSize: '40px',
+            opacity: 0.15,
+            animation: 'float 6s ease-in-out infinite',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(255,107,157,0.3))'
+          }}>🍭</div>
+          <div style={{
+            position: 'absolute',
+            top: '20%',
+            right: '8%',
+            fontSize: '35px',
+            opacity: 0.12,
+            animation: 'float 8s ease-in-out infinite 1s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(78,205,196,0.3))'
+          }}>🍬</div>
+          <div style={{
+            position: 'absolute',
+            bottom: '25%',
+            left: '12%',
+            fontSize: '38px',
+            opacity: 0.13,
+            animation: 'float 7s ease-in-out infinite 2s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(166,108,255,0.3))'
+          }}>🍫</div>
+          <div style={{
+            position: 'absolute',
+            bottom: '15%',
+            right: '10%',
+            fontSize: '42px',
+            opacity: 0.14,
+            animation: 'float 9s ease-in-out infinite 0.5s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(255,179,71,0.3))'
+          }}>🎈</div>
+          <div style={{
+            position: 'absolute',
+            top: '60%',
+            left: '3%',
+            fontSize: '32px',
+            opacity: 0.11,
+            animation: 'float 7s ease-in-out infinite 1.5s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(255,107,157,0.25))'
+          }}>🎀</div>
+        </>
+      )}
+
+      {theme === 'growth' && (
+        <>
+          <div style={{
+            position: 'absolute',
+            top: '8%',
+            left: '6%',
+            fontSize: '36px',
+            opacity: 0.12,
+            animation: 'sway 8s ease-in-out infinite',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(72,187,120,0.25))'
+          }}>🌿</div>
+          <div style={{
+            position: 'absolute',
+            top: '15%',
+            right: '10%',
+            fontSize: '40px',
+            opacity: 0.14,
+            animation: 'sway 10s ease-in-out infinite 1s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(56,178,172,0.25))'
+          }}>🍃</div>
+          <div style={{
+            position: 'absolute',
+            bottom: '20%',
+            left: '8%',
+            fontSize: '34px',
+            opacity: 0.13,
+            animation: 'sway 9s ease-in-out infinite 2s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(104,211,145,0.25))'
+          }}>🌱</div>
+          <div style={{
+            position: 'absolute',
+            bottom: '12%',
+            right: '12%',
+            fontSize: '38px',
+            opacity: 0.11,
+            animation: 'sway 7s ease-in-out infinite 0.5s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(72,187,120,0.2))'
+          }}>🌴</div>
+          <div style={{
+            position: 'absolute',
+            top: '45%',
+            right: '4%',
+            fontSize: '30px',
+            opacity: 0.1,
+            animation: 'sway 11s ease-in-out infinite 1.5s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 4px 8px rgba(56,178,172,0.2))'
+          }}>🍀</div>
+        </>
+      )}
+
+      {theme === 'quiet_growth' && (
+        <>
+          <div style={{
+            position: 'absolute',
+            top: '12%',
+            left: '8%',
+            fontSize: '28px',
+            opacity: 0.15,
+            animation: 'twinkle 6s ease-in-out infinite',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 10px rgba(155,138,166,0.4))'
+          }}>🌙</div>
+          <div style={{
+            position: 'absolute',
+            top: '18%',
+            right: '12%',
+            fontSize: '20px',
+            opacity: 0.2,
+            animation: 'twinkle 8s ease-in-out infinite 1s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 8px rgba(155,138,166,0.35))'
+          }}>✨</div>
+          <div style={{
+            position: 'absolute',
+            bottom: '25%',
+            left: '10%',
+            fontSize: '18px',
+            opacity: 0.18,
+            animation: 'twinkle 7s ease-in-out infinite 2s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 8px rgba(155,138,166,0.3))'
+          }}>⭐</div>
+          <div style={{
+            position: 'absolute',
+            bottom: '15%',
+            right: '8%',
+            fontSize: '22px',
+            opacity: 0.16,
+            animation: 'twinkle 9s ease-in-out infinite 0.5s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 10px rgba(155,138,166,0.35))'
+          }}>🌟</div>
+          <div style={{
+            position: 'absolute',
+            top: '55%',
+            left: '5%',
+            fontSize: '16px',
+            opacity: 0.14,
+            animation: 'twinkle 5s ease-in-out infinite 1.5s',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 6px rgba(155,138,166,0.25))'
+          }}>✦</div>
+        </>
+      )}
+      
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        @keyframes sway {
+          0%, 100% { transform: rotate(-5deg) scale(1); }
+          50% { transform: rotate(5deg) scale(1.05); }
+        }
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.25; transform: scale(1.1); }
+        }
+      `}</style>
+    </div>
   );
 };
 
