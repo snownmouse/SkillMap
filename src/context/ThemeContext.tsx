@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { storage } from '../services/storage';
 
-export type ThemeMode = 'default' | 'childrens_day' | 'growth' | 'hidden';
+export type ThemeMode = 'default' | 'childrens_day' | 'growth' | 'quiet_growth';
 
 interface ThemeContextType {
   theme: ThemeMode;
@@ -40,8 +40,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       switch (prev) {
         case 'default': return 'childrens_day';
         case 'childrens_day': return 'growth';
-        case 'growth': return 'hidden';
-        case 'hidden': return 'default';
+        case 'growth': return 'quiet_growth';
+        case 'quiet_growth': return 'default';
         default: return 'default';
       }
     });

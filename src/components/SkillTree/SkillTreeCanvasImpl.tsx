@@ -29,7 +29,7 @@ const growthStatusColors = {
   completed: { bg: '#68D391', border: '#38B2AC', text: '#22543D' }
 };
 
-const hiddenStatusColors = {
+const quietGrowthStatusColors = {
   locked: { bg: '#1A1A2E', border: '#6B7280', text: '#E0E0E8' },
   available: { bg: '#2A2A3E', border: '#7B7B8A', text: '#E0E0E8' },
   in_progress: { bg: '#3A3A4E', border: '#8B8BA6', text: '#E0E0E8' },
@@ -80,7 +80,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
     switch (currentTheme) {
       case 'childrens_day': return childrensDayStatusColors;
       case 'growth': return growthStatusColors;
-      case 'hidden': return hiddenStatusColors;
+      case 'quiet_growth': return quietGrowthStatusColors;
       default: return defaultStatusColors;
     }
   };

@@ -1,4 +1,4 @@
 /* 主题样式总入口 - 导入所有主题 */
 @import "./childrens-day/index.css";
 @import "./growth/index.css";
-@import "./hidden/index.css";
+@import "./quiet_growth/index.css";

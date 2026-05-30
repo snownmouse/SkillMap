@@ -19,7 +19,7 @@ const Header: React.FC = () => {
     default: '默认',
     childrens_day: '六一',
     growth: '成长',
-    hidden: '暗自'
+    quiet_growth: '潜沉'
   }[theme];
   const currentTreePath = skillTree?.id ? `/tree/${skillTree.id}` : '/tree';
   const currentTimelinePath = skillTree?.id ? `/tree/${skillTree.id}/timeline` : '/tree/timeline';

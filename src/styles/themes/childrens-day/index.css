@@ -1,38 +1,38 @@
-/* 六一儿童节主题 - 明亮多彩彩虹风格！ */
+/* 六一儿童节主题 - 超明显糖果彩虹风格！ */
 [data-theme="childrens_day"] {
-  --color-app-bg: #FFF5E6;
+  --color-app-bg: #FFF0F8;
   --color-app-surface: rgba(255, 255, 255, 0.96);
-  --color-app-border: rgba(255, 179, 71, 0.5);
-  --color-app-text: #3D3D3D;
-  --color-app-muted: #7A7A7A;
+  --color-app-border: rgba(255, 107, 157, 0.5);
+  --color-app-text: #5D4E6D;
+  --color-app-muted: #9B8AA6;
 
-  --color-skill-core: #FF9F43;
+  --color-skill-core: #FF6B9D;
   --color-skill-specialization: #4ECDC4;
-  --color-skill-general: #7D5AFE;
+  --color-skill-general: #A66CFF;
 
   --color-status-locked: #E0E0E0;
   --color-status-available: #FFB347;
-  --color-status-inProgress: #FF9F43;
+  --color-status-inProgress: #FF6B9D;
   --color-status-completed: #4ECDC4;
 
   --radius-xl: 32px;
   --radius-2xl: 48px;
 }
 
-/* 背景：明亮彩虹渐变！ */
+/* 背景：非常明显的彩色糖果渐变！ */
 [data-theme="childrens_day"] body {
   background: linear-gradient(
     180deg,
-    #FFF5E6 0%,
-    #E8F8F8 20%,
-    #FFF8E1 40%,
-    #F3E8FF 60%,
-    #E8F5FF 80%,
-    #FFF5E6 100%
+    #FFE5F0 0%,
+    #E5FFFC 20%,
+    #FFF5E5 40%,
+    #F0E5FF 60%,
+    #E5F5FF 80%,
+    #FFE5F0 100%
   ) !important;
   background-size: 100% 400% !important;
   animation: candy-rainbow 15s ease infinite !important;
-  color: #3D3D3D !important;
+  color: #5D4E6D !important;
 }
 
 [data-theme="childrens_day"] #root {
@@ -41,6 +41,33 @@
 
 [data-theme="childrens_day"] .app-shell {
   background: transparent !important;
+}
+
+/* 糖果装饰层 */
+[data-theme="childrens_day"] .app-shell::before {
+  content: "🍭 🍬 🍫 🍪 🎂 🍰 🎈 🎀 ✨ 🌟 🌈 ⭐";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.08;
+  font-size: 52px;
+  line-height: 1.6;
+  word-spacing: 24px;
+  letter-spacing: 6px;
+  text-align: center;
+  padding: 50px;
+  user-select: none;
+  filter: drop-shadow(0 6px 16px rgba(255, 107, 157, 0.25));
+  animation: float-candy 20s linear infinite;
+}
+
+@keyframes float-candy {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-100px); }
 }
 
 [data-theme="childrens_day"] .app-container {
