@@ -16,10 +16,10 @@ const defaultStatusColors = {
 };
 
 const childrensDayStatusColors = {
-  locked: { bg: '#FFE4EC', border: '#FFB6C1', text: '#C9A0A0' },
-  available: { bg: '#FFE4E4', border: '#FF85A2', text: '#FF6B8A' },
-  in_progress: { bg: '#FFF0E4', border: '#FFB347', text: '#FF9F43' },
-  completed: { bg: '#E4F4FF', border: '#87CEEB', text: '#5DADE2' }
+  locked: { bg: '#FFF5E6', border: '#FFD93D', text: '#3D3D3D' },
+  available: { bg: '#FFF0E4', border: '#FF9F43', text: '#3D3D3D' },
+  in_progress: { bg: '#FFF8E1', border: '#FFB347', text: '#3D3D3D' },
+  completed: { bg: '#E8F8F8', border: '#4ECDC4', text: '#3D3D3D' }
 };
 
 function getLayoutConfig(data: SkillTreeData) {
@@ -120,68 +120,68 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         {
           selector: 'node',
           style: {
-            width: 140,
-            height: 50,
+            width: 120,
+            height: 120,
             shape: 'ellipse',
             'background-color': '#ffffff',
-            'border-width': 3,
-            'border-color': '#FFB6C1',
+            'border-width': 5,
+            'border-color': '#FFD93D',
             'label': 'data(label)',
-            'color': '#5D4E6D',
+            'color': '#3D3D3D',
             'text-valign': 'center',
             'text-halign': 'center',
             'font-size': 12,
             'font-weight': 'bold' as const,
             'text-wrap': 'ellipsis' as const,
-            'text-max-width': '120px',
-            'text-opacity': 0.9,
+            'text-max-width': '100px',
+            'text-opacity': 1,
             'transition-property': 'background-color, border-color, width, height, shape',
             'transition-duration': 400,
-            'box-shadow': '0 4px 12px rgba(255, 133, 162, 0.2)'
+            'box-shadow': '0 8px 24px rgba(255, 159, 67, 0.3)'
           }
         },
         {
           selector: 'node[status="locked"]',
           style: {
-            'background-color': '#FFE4EC',
-            'border-color': '#FFB6C1',
-            'color': '#C9A0A0',
+            'background-color': '#FFF5E6',
+            'border-color': '#FFD93D',
+            'color': '#3D3D3D',
             'opacity': 0.7
           }
         },
         {
           selector: 'node[status="available"]',
           style: {
-            'background-color': '#FFE4E4',
-            'border-color': '#FF85A2',
-            'color': '#FF6B8A'
+            'background-color': '#FFF0E4',
+            'border-color': '#FF9F43',
+            'color': '#3D3D3D'
           }
         },
         {
           selector: 'node[status="in_progress"]',
           style: {
-            'background-color': '#FFF0E4',
+            'background-color': '#FFF8E1',
             'border-color': '#FFB347',
-            'color': '#FF9F43'
+            'color': '#3D3D3D'
           }
         },
         {
           selector: 'node[status="completed"]',
           style: {
-            'background-color': '#E4F4FF',
-            'border-color': '#87CEEB',
-            'color': '#5DADE2'
+            'background-color': '#E8F8F8',
+            'border-color': '#4ECDC4',
+            'color': '#3D3D3D'
           }
         },
         {
           selector: 'edge',
           style: {
-            'width': 4,
-            'line-color': '#FFB6C1',
+            'width': 5,
+            'line-color': '#4ECDC4',
             'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
-            'target-arrow-color': '#FFB6C1',
-            'opacity': 0.7
+            'target-arrow-color': '#4ECDC4',
+            'opacity': 0.8
           }
         },
         {
@@ -194,17 +194,17 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         {
           selector: 'edge:selected',
           style: {
-            'line-color': '#FF85A2',
-            'target-arrow-color': '#FF85A2',
-            width: 5
+            'line-color': '#FF9F43',
+            'target-arrow-color': '#FF9F43',
+            width: 6
           }
         },
         {
           selector: 'node:selected',
           style: {
-            'border-width': 4,
-            'border-color': '#FF85A2',
-            'box-shadow': '0 8px 24px rgba(255, 133, 162, 0.4)'
+            'border-width': 6,
+            'border-color': '#FF9F43',
+            'box-shadow': '0 12px 36px rgba(255, 159, 67, 0.5)'
           }
         }
       ] : [
@@ -329,9 +329,9 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
 
         node.animate({
           style: {
-            'width': 160,
-            'height': 60,
-            'border-width': 3,
+            'width': theme === 'childrens_day' ? 140 : 160,
+            'height': theme === 'childrens_day' ? 140 : 60,
+            'border-width': theme === 'childrens_day' ? 6 : 3,
             'z-index': 999
           }
         }, {
@@ -352,9 +352,9 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
 
         node.animate({
           style: {
-            'width': 140,
-            'height': 50,
-            'border-width': 2,
+            'width': theme === 'childrens_day' ? 120 : 140,
+            'height': theme === 'childrens_day' ? 120 : 50,
+            'border-width': theme === 'childrens_day' ? 5 : 2,
             'z-index': 1
           }
         }, {
@@ -475,9 +475,9 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         minHeight: '600px',
         background: theme === 'childrens_day'
           ? `
-              linear-gradient(90deg, rgba(255,182,193,0.08) 1px, transparent 1px),
-              linear-gradient(rgba(255,182,193,0.08) 1px, transparent 1px),
-              linear-gradient(180deg, #FFF5F8 0%, #FFE4EC 40%, #E8F4F8 100%)
+              linear-gradient(90deg, rgba(255,159,67,0.05) 1px, transparent 1px),
+              linear-gradient(rgba(255,159,67,0.05) 1px, transparent 1px),
+              linear-gradient(180deg, #FFF5E6 0%, #E8F8F8 40%, #F3E8FF 100%)
             `
           : `
               linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),

@@ -33,7 +33,7 @@ const Header: React.FC = () => {
             </div>
             <div>
               <div className="text-lg font-black tracking-tight text-app-text">栖舟寻志</div>
-              <div className="text-[11px] uppercase tracking-[0.24em] text-app-muted">AI Career Atlas</div>
+              <div className="text-[11px] uppercase tracking-[0.24em] text-app-muted">skillmap</div>
             </div>
           </Link>
 
