@@ -1,0 +1,268 @@
+/* 暗自主题 - 低调隐忍风格 */
+[data-theme="hidden"] {
+  --color-app-bg: #1A1A2E;
+  --color-app-surface: rgba(30, 30, 46, 0.95);
+  --color-app-border: rgba(80, 80, 120, 0.4);
+  --color-app-text: #E0E0E8;
+  --color-app-muted: #8888A0;
+
+  --color-skill-core: #9B8AA6;
+  --color-skill-specialization: #6B7280;
+  --color-skill-general: #5A5A7A;
+
+  --color-status-locked: #2A2A3E;
+  --color-status-available: #6B7280;
+  --color-status-inProgress: #8B8BA6;
+  --color-status-completed: #9B8AA6;
+
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+}
+
+/* 背景：深沉的暗色系 */
+[data-theme="hidden"] body {
+  background: linear-gradient(
+    180deg,
+    #1A1A2E 0%,
+    #16213E 30%,
+    #1A1A2E 60%,
+    #0F0F1A 100%
+  ) !important;
+  color: #E0E0E8 !important;
+}
+
+[data-theme="hidden"] #root {
+  background: transparent !important;
+}
+
+[data-theme="hidden"] .app-shell {
+  background: transparent !important;
+}
+
+[data-theme="hidden"] .app-container {
+  background: transparent !important;
+}
+
+[data-theme="hidden"] .page-hero {
+  background: transparent !important;
+  padding: 60px 0 36px;
+}
+
+/* 面板：低调的深色边框 */
+[data-theme="hidden"] .panel-card {
+  background: rgba(30, 30, 46, 0.95) !important;
+  border: 2px solid rgba(80, 80, 120, 0.4) !important;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(16px) !important;
+  border-radius: var(--radius-2xl) !important;
+}
+
+[data-theme="hidden"] .panel-card-soft {
+  background: rgba(40, 40, 60, 0.9) !important;
+  border: 1px solid rgba(80, 80, 120, 0.3) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+/* 按钮：低调的内敛风格 */
+[data-theme="hidden"] .btn-primary {
+  background: linear-gradient(135deg, #6B7280, #5A5A7A) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 8px !important;
+  color: #E0E0E8 !important;
+  border: 1px solid rgba(80, 80, 120, 0.4) !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-theme="hidden"] .btn-primary:hover {
+  background: linear-gradient(135deg, #7B7B8A, #6A6A7A) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+}
+
+[data-theme="hidden"] .btn-secondary {
+  background: rgba(50, 50, 70, 0.9) !important;
+  border: 1px solid rgba(80, 80, 120, 0.4) !important;
+  border-radius: 8px !important;
+  color: #8888A0 !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-theme="hidden"] .btn-secondary:hover {
+  background: rgba(60, 60, 80, 0.95) !important;
+  border-color: #9B8AA6 !important;
+  color: #9B8AA6 !important;
+  transform: translateY(-1px) scale(1.01) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 标签：低调的紫色 */
+[data-theme="hidden"] .section-kicker {
+  background: rgba(155, 138, 166, 0.1) !important;
+  border: 1px solid rgba(155, 138, 166, 0.3) !important;
+  color: #9B8AA6 !important;
+  border-radius: 6px !important;
+  padding: 8px 16px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 滚动条：低调的灰色 */
+[data-theme="hidden"] ::-webkit-scrollbar {
+  width: 10px;
+}
+
+[data-theme="hidden"] ::-webkit-scrollbar-track {
+  background: rgba(30, 30, 46, 0.8);
+  border-radius: 5px;
+}
+
+[data-theme="hidden"] ::-webkit-scrollbar-thumb {
+  background: rgba(80, 80, 120, 0.6) !important;
+  border-radius: 5px;
+  border: 2px solid rgba(30, 30, 46, 0.8);
+}
+
+[data-theme="hidden"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 140, 0.7) !important;
+}
+
+/* 输入框：低调的深色 */
+[data-theme="hidden"] input,
+[data-theme="hidden"] textarea,
+[data-theme="hidden"] select {
+  background: rgba(30, 30, 46, 0.95) !important;
+  border: 1px solid rgba(80, 80, 120, 0.4) !important;
+  border-radius: 8px !important;
+  color: #E0E0E8 !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="hidden"] input:focus,
+[data-theme="hidden"] textarea:focus,
+[data-theme="hidden"] select:focus {
+  border-color: #9B8AA6 !important;
+  box-shadow:
+    0 0 0 3px rgba(155, 138, 166, 0.1),
+    inset 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  outline: none !important;
+}
+
+[data-theme="hidden"] input::placeholder,
+[data-theme="hidden"] textarea::placeholder {
+  color: #666680 !important;
+}
+
+/* 链接：低调的紫色 */
+[data-theme="hidden"] a {
+  color: #9B8AA6 !important;
+  transition: color 0.3s ease !important;
+}
+
+[data-theme="hidden"] a:hover {
+  color: #ABA0C0 !important;
+}
+
+/* 动画：微妙的变化 */
+@keyframes subtle-fade {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+[data-theme="hidden"] .animate-pulse-glow {
+  animation: subtle-fade 4s ease-in-out infinite !important;
+}
+
+[data-theme="hidden"] .animate-scale-in {
+  animation: subtle-fade 0.3s ease-out !important;
+}
+
+[data-theme="hidden"] .animate-fade-in {
+  animation: subtle-fade 0.4s ease-out !important;
+}
+
+/* 技能树节点：低调的矩形风格 */
+[data-theme="hidden"] .skill-node,
+[data-theme="hidden"] [class*="skill-node"],
+[data-theme="hidden"] .tree-node {
+  border-radius: 6px !important;
+  border: 2px solid !important;
+  border-color: #6B7280 !important;
+  background: linear-gradient(135deg, #2A2A3E, #1E1E2E) !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="hidden"] .skill-node:hover,
+[data-theme="hidden"] [class*="skill-node"]:hover,
+[data-theme="hidden"] .tree-node:hover {
+  border-color: #9B8AA6 !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4) !important;
+  transform: scale(1.05) !important;
+}
+
+[data-theme="hidden"] .tree-branch {
+  stroke: #5A5A7A !important;
+  stroke-width: 2px !important;
+  stroke-linecap: round !important;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* 进度条：低调的灰色 */
+[data-theme="hidden"] input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, #5A5A7A, #6B7280, #9B8AA6);
+  border-radius: 999px;
+  height: 8px;
+}
+
+[data-theme="hidden"] input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #7B7B8A, #6B6B7A) !important;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(155, 138, 166, 0.5);
+}
+
+[data-theme="hidden"] input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #7B7B8A, #6B6B7A) !important;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(155, 138, 166, 0.5);
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+  [data-theme="hidden"] .panel-card {
+    border-radius: 12px !important;
+    padding: 14px !important;
+  }
+
+  [data-theme="hidden"] .page-hero {
+    padding: 40px 0 24px !important;
+  }
+
+  [data-theme="hidden"] .btn-primary,
+  [data-theme="hidden"] .btn-secondary {
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-theme="hidden"] .panel-card {
+    border-radius: 10px !important;
+    padding: 12px !important;
+  }
+}

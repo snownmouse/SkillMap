@@ -14,7 +14,13 @@ const Header: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { skillTree } = useSkillTree();
   const { state } = useAppContext();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, cycleTheme } = useTheme();
+  const themeLabel = {
+    default: '默认',
+    childrens_day: '六一',
+    growth: '成长',
+    hidden: '暗自'
+  }[theme];
   const currentTreePath = skillTree?.id ? `/tree/${skillTree.id}` : '/tree';
   const currentTimelinePath = skillTree?.id ? `/tree/${skillTree.id}/timeline` : '/tree/timeline';
 
@@ -61,12 +67,12 @@ const Header: React.FC = () => {
 
         <div className="flex shrink-0 items-center gap-3">
           <button
-            onClick={toggleTheme}
+            onClick={cycleTheme}
             className="hidden rounded-xl border border-skill-core/20 bg-skill-core/10 px-3 py-2 text-sm font-bold text-skill-core transition-all hover:bg-skill-core/20 hover:scale-105 active:scale-95 sm:inline-flex items-center gap-2"
-            title={theme === 'default' ? '切换到六一主题' : '切换到默认主题'}
+            title="切换主题"
           >
-            <PartyPopper size={16} />
-            <span className="hidden lg:inline">{theme === 'default' ? '六一' : '原版'}</span>
+            <Sparkles size={16} />
+            <span className="hidden lg:inline">{themeLabel}</span>
           </button>
           <Link
             to="/generate"

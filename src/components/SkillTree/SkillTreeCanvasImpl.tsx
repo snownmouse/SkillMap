@@ -22,6 +22,20 @@ const childrensDayStatusColors = {
   completed: { bg: '#E8F8F8', border: '#4ECDC4', text: '#3D3D3D' }
 };
 
+const growthStatusColors = {
+  locked: { bg: '#F0FFF4', border: '#48BB78', text: '#22543D' },
+  available: { bg: '#C6F6D5', border: '#68D391', text: '#22543D' },
+  in_progress: { bg: '#9AE6B4', border: '#48BB78', text: '#22543D' },
+  completed: { bg: '#68D391', border: '#38B2AC', text: '#22543D' }
+};
+
+const hiddenStatusColors = {
+  locked: { bg: '#1A1A2E', border: '#6B7280', text: '#E0E0E8' },
+  available: { bg: '#2A2A3E', border: '#7B7B8A', text: '#E0E0E8' },
+  in_progress: { bg: '#3A3A4E', border: '#8B8BA6', text: '#E0E0E8' },
+  completed: { bg: '#4A4A5E', border: '#9B8AA6', text: '#E0E0E8' }
+};
+
 function getLayoutConfig(data: SkillTreeData) {
   const nodeIds = new Set(Object.keys(data.nodes));
   const hasIncoming = new Set<string>();
@@ -62,7 +76,16 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
   onNodeClickRef.current = onNodeClick;
   dataRef.current = data;
 
-  const statusColors = theme === 'childrens_day' ? childrensDayStatusColors : defaultStatusColors;
+  const getStatusColors = (currentTheme: string) => {
+    switch (currentTheme) {
+      case 'childrens_day': return childrensDayStatusColors;
+      case 'growth': return growthStatusColors;
+      case 'hidden': return hiddenStatusColors;
+      default: return defaultStatusColors;
+    }
+  };
+
+  const statusColors = getStatusColors(theme);
 
   const nodeStyle = useMemo(() => ({
     width: 140,

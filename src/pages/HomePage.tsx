@@ -7,18 +7,24 @@ import { useTheme } from '../context/ThemeContext';
  * 首页
  */
 const HomePage: React.FC = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, cycleTheme } = useTheme();
+  const themeLabel = {
+    default: '默认',
+    childrens_day: '六一',
+    growth: '成长',
+    hidden: '暗自'
+  }[theme];
 
   return (
     <div className="app-shell px-4 py-6 md:px-6 flex items-center justify-center min-h-[calc(100vh-80px)] relative">
       {/* 主题切换按钮 */}
       <button
-        onClick={toggleTheme}
+        onClick={cycleTheme}
         className="fixed top-4 right-4 z-50 rounded-xl border border-skill-core/20 bg-skill-core/10 px-4 py-2 text-sm font-bold text-skill-core transition-all hover:bg-skill-core/20 hover:scale-105 active:scale-95 flex items-center gap-2 shadow-lg"
-        title={theme === 'default' ? '切换到六一主题' : '切换到默认主题'}
+        title="切换主题"
       >
-        <PartyPopper size={18} />
-        <span>{theme === 'default' ? '六一' : '原版'}</span>
+        <Sparkles size={18} />
+        <span>{themeLabel}</span>
       </button>
 
       <div className="app-container max-w-4xl w-full">

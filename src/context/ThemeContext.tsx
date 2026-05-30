@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { storage } from '../services/storage';
 
-export type ThemeMode = 'default' | 'childrens_day';
+export type ThemeMode = 'default' | 'childrens_day' | 'growth' | 'hidden';
 
 interface ThemeContextType {
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
-  toggleTheme: () => void;
+  cycleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -35,12 +35,20 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setThemeState(newTheme);
   };
 
-  const toggleTheme = () => {
-    setThemeState(prev => prev === 'default' ? 'childrens_day' : 'default');
+  const cycleTheme = () => {
+    setThemeState(prev => {
+      switch (prev) {
+        case 'default': return 'childrens_day';
+        case 'childrens_day': return 'growth';
+        case 'growth': return 'hidden';
+        case 'hidden': return 'default';
+        default: return 'default';
+      }
+    });
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, cycleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

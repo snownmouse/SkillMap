@@ -1,0 +1,300 @@
+/* 成长主题 - 绿色青涩风格 */
+[data-theme="growth"] {
+  --color-app-bg: #F0FFF4;
+  --color-app-surface: rgba(255, 255, 255, 0.96);
+  --color-app-border: rgba(72, 187, 120, 0.4);
+  --color-app-text: #22543D;
+  --color-app-muted: #68D391;
+
+  --color-skill-core: #48BB78;
+  --color-skill-specialization: #38B2AC;
+  --color-skill-general: #667EEA;
+
+  --color-status-locked: #E2E8F0;
+  --color-status-available: #48BB78;
+  --color-status-inProgress: #68D391;
+  --color-status-completed: #38B2AC;
+
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+}
+
+/* 背景：清新的绿色渐变 */
+[data-theme="growth"] body {
+  background: linear-gradient(
+    135deg,
+    #F0FFF4 0%,
+    #C6F6D5 25%,
+    #9AE6B4 50%,
+    #68D391 75%,
+    #48BB78 100%
+  ) !important;
+  background-size: 400% 400% !important;
+  animation: green-shift 12s ease infinite !important;
+  color: #22543D !important;
+}
+
+[data-theme="growth"] #root {
+  background: transparent !important;
+}
+
+[data-theme="growth"] .app-shell {
+  background: transparent !important;
+}
+
+[data-theme="growth"] .app-container {
+  background: transparent !important;
+}
+
+[data-theme="growth"] .page-hero {
+  background: transparent !important;
+  padding: 60px 0 36px;
+}
+
+/* 面板：清新绿色边框 */
+[data-theme="growth"] .panel-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 4px solid #48BB78 !important;
+  box-shadow:
+    0 20px 60px rgba(72, 187, 120, 0.2),
+    0 10px 30px rgba(56, 178, 172, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: var(--radius-2xl) !important;
+}
+
+[data-theme="growth"] .panel-card-soft {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 3px solid #68D391 !important;
+  box-shadow: 0 12px 40px rgba(104, 211, 145, 0.15) !important;
+  backdrop-filter: blur(16px) !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+/* 按钮：清新的绿色渐变 */
+[data-theme="growth"] .btn-primary {
+  background: linear-gradient(135deg, #48BB78, #38B2AC) !important;
+  box-shadow:
+    0 12px 40px rgba(72, 187, 120, 0.4),
+    0 6px 20px rgba(56, 178, 172, 0.3) !important;
+  border-radius: 999px !important;
+  color: white !important;
+  border: none !important;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+[data-theme="growth"] .btn-primary:hover {
+  background: linear-gradient(135deg, #68D391, #48BB78) !important;
+  box-shadow:
+    0 16px 50px rgba(72, 187, 120, 0.5),
+    0 8px 24px rgba(56, 178, 172, 0.4) !important;
+  transform: translateY(-3px) scale(1.05) !important;
+}
+
+[data-theme="growth"] .btn-secondary {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 3px solid #38B2AC !important;
+  border-radius: 999px !important;
+  color: #38B2AC !important;
+  box-shadow: 0 10px 30px rgba(56, 178, 172, 0.15) !important;
+  transition: all 0.35s ease !important;
+}
+
+[data-theme="growth"] .btn-secondary:hover {
+  background: rgba(240, 255, 244, 0.98) !important;
+  border-color: #48BB78 !important;
+  color: #48BB78 !important;
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 14px 40px rgba(72, 187, 120, 0.25) !important;
+}
+
+/* 标签：清新的绿色 */
+[data-theme="growth"] .section-kicker {
+  background: linear-gradient(135deg, rgba(72, 187, 120, 0.15), rgba(56, 178, 172, 0.15)) !important;
+  border: 2px solid #48BB78 !important;
+  color: #48BB78 !important;
+  border-radius: 999px !important;
+  padding: 10px 20px !important;
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.15) !important;
+}
+
+/* 滚动条：清新的绿色 */
+[data-theme="growth"] ::-webkit-scrollbar {
+  width: 12px;
+}
+
+[data-theme="growth"] ::-webkit-scrollbar-track {
+  background: rgba(198, 246, 213, 0.5);
+  border-radius: 6px;
+}
+
+[data-theme="growth"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #48BB78, #38B2AC, #667EEA) !important;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="growth"] ::-webkit-scrollbar-thumb:hover {
+  box-shadow: 0 0 16px rgba(72, 187, 120, 0.5) !important;
+}
+
+/* 输入框：清新的绿色边框 */
+[data-theme="growth"] input,
+[data-theme="growth"] textarea,
+[data-theme="growth"] select {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 3px solid #68D391 !important;
+  border-radius: 16px !important;
+  color: #22543D !important;
+  box-shadow: inset 0 2px 10px rgba(72, 187, 120, 0.06) !important;
+}
+
+[data-theme="growth"] input:focus,
+[data-theme="growth"] textarea:focus,
+[data-theme="growth"] select:focus {
+  border-color: #48BB78 !important;
+  box-shadow:
+    0 0 0 5px rgba(72, 187, 120, 0.12),
+    inset 0 2px 10px rgba(72, 187, 120, 0.06) !important;
+  outline: none !important;
+}
+
+[data-theme="growth"] input::placeholder,
+[data-theme="growth"] textarea::placeholder {
+  color: #9AE6B4 !important;
+}
+
+/* 链接：清新的绿色 */
+[data-theme="growth"] a {
+  color: #38B2AC !important;
+  transition: color 0.3s ease !important;
+}
+
+[data-theme="growth"] a:hover {
+  color: #48BB78 !important;
+}
+
+/* 动画 */
+@keyframes green-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes leaf-sway {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-10px) rotate(3deg); }
+  50% { transform: translateY(-5px) rotate(-2deg); }
+  75% { transform: translateY(-15px) rotate(4deg); }
+}
+
+@keyframes sprout-pop {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  60% { transform: scale(1.2) rotate(-10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+[data-theme="growth"] .animate-pulse-glow {
+  animation: leaf-sway 3s ease-in-out infinite !important;
+}
+
+[data-theme="growth"] .animate-scale-in {
+  animation: sprout-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+[data-theme="growth"] .animate-fade-in {
+  animation: fade-in-up 0.4s ease-out !important;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 技能树节点：清新的绿色风格 */
+[data-theme="growth"] .skill-node,
+[data-theme="growth"] [class*="skill-node"],
+[data-theme="growth"] .tree-node {
+  border-radius: 20px !important;
+  border: 4px solid !important;
+  border-color: #48BB78 !important;
+  background: linear-gradient(135deg, #F0FFF4, #FFFFFF) !important;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  box-shadow: 0 10px 30px rgba(72, 187, 120, 0.2) !important;
+}
+
+[data-theme="growth"] .skill-node:hover,
+[data-theme="growth"] [class*="skill-node"]:hover,
+[data-theme="growth"] .tree-node:hover {
+  transform: scale(1.1) rotate(3deg) !important;
+  box-shadow: 0 20px 60px rgba(72, 187, 120, 0.35) !important;
+  border-color: #68D391 !important;
+}
+
+[data-theme="growth"] .tree-branch {
+  stroke: #38B2AC !important;
+  stroke-width: 4px !important;
+  stroke-linecap: round !important;
+  filter: drop-shadow(0 3px 10px rgba(56, 178, 172, 0.25)) !important;
+}
+
+/* 进度条：清新的绿色 */
+[data-theme="growth"] input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, #48BB78, #38B2AC, #667EEA);
+  border-radius: 999px;
+  height: 10px;
+}
+
+[data-theme="growth"] input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, #48BB78, #68D391) !important;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 5px 16px rgba(72, 187, 120, 0.45);
+  border: 3px solid white;
+}
+
+[data-theme="growth"] input[type="range"]::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, #48BB78, #68D391) !important;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 5px 16px rgba(72, 187, 120, 0.45);
+  border: 3px solid white;
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+  [data-theme="growth"] .panel-card {
+    border-radius: 24px !important;
+    padding: 16px !important;
+  }
+
+  [data-theme="growth"] .page-hero {
+    padding: 40px 0 24px !important;
+  }
+
+  [data-theme="growth"] .btn-primary,
+  [data-theme="growth"] .btn-secondary {
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-theme="growth"] .panel-card {
+    border-radius: 20px !important;
+    padding: 14px !important;
+  }
+}
