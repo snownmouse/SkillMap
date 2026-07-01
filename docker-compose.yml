@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: skillmap
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-skillmap}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d skillmap"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-skillmap}"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -32,10 +32,14 @@ services:
       NODE_ENV: production
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: skillmap
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_NAME: ${POSTGRES_DB:-skillmap}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       REDIS_URL: redis://redis:6379
+      # 生产环境必须显式配置允许的前端来源
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required in production}
+      # 默认使用 dummy，部署时通过 .env 覆盖为真实供应商
+      LLM_PROVIDER: ${LLM_PROVIDER:-dummy}
       DISABLE_TASK_WORKER: "true"
     ports:
       - "3000:3000"
@@ -52,10 +56,11 @@ services:
       NODE_ENV: production
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: skillmap
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_NAME: ${POSTGRES_DB:-skillmap}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       REDIS_URL: redis://redis:6379
+      LLM_PROVIDER: ${LLM_PROVIDER:-dummy}
       TASK_QUEUE_MODE: redis
     depends_on:
       postgres:

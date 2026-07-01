@@ -4,6 +4,7 @@ import { getPlanningPathsPrompt } from '../prompts/planningPaths';
 import type { GenerateTreeRequest } from '../../types/backend';
 import type { PlanPath, PlanPathOption, PlanStage } from '../../types/skillTree';
 import { logger } from '../utils/logger';
+import { createProviderFromConfig, isRequestConfigEffective } from '../utils/llmConfigFactory';
 
 interface PlanningPathsResponseData {
   longTermGoal: string;
@@ -169,11 +170,14 @@ export const planningController = {
       let data: PlanningPathsResponseData | null = null;
       let lastError: Error | null = null;
       const maxAttempts = 2;
+      const providerOverride = isRequestConfigEffective(req.llmConfig)
+        ? createProviderFromConfig(req.llmConfig)
+        : undefined;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           const { system, user } = getPlanningPathsPrompt(inputs);
-          const raw = await llmService.chatJSON(system, user);
+          const raw = await llmService.chatJSON(system, user, providerOverride);
           logger.info('规划路径API返回原始数据', { attempt, rawType: typeof raw, hasPaths: Array.isArray(raw?.paths), hasStages: Array.isArray(raw?.stages) });
           const normalized = normalizePlanningResponse(raw);
 

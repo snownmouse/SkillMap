@@ -61,10 +61,12 @@ const TreePage: React.FC = () => {
     navigate('/generate');
   };
 
+  const currentUserId = state.auth?.user?.id;
+
   useEffect(() => {
-    const pending = storage.loadPendingTask();
+    const pending = storage.loadPendingTask(currentUserId);
     setPendingTaskId(pending?.taskId || null);
-  }, []);
+  }, [currentUserId]);
 
   useTaskWebSocket(pendingTaskId, async (update) => {
     if (update.status === 'node_filled' && update.nodeId && update.nodeData) {
@@ -78,14 +80,14 @@ const TreePage: React.FC = () => {
         setSkillTree(tree);
       } catch {
       } finally {
-        storage.clearPendingTask();
+        storage.clearPendingTask(currentUserId);
         setPendingTaskId(null);
       }
       return;
     }
 
     if (update.status === 'failed') {
-      storage.clearPendingTask();
+      storage.clearPendingTask(currentUserId);
       setPendingTaskId(null);
       setActionMessage('生成任务已结束（部分节点可能仍为待填充状态）。');
       return;
@@ -103,12 +105,12 @@ const TreePage: React.FC = () => {
           const tree = await difyApi.getSkillTreeById(status.treeId);
           if (cancelled) return;
           setSkillTree(tree);
-          storage.clearPendingTask();
+          storage.clearPendingTask(currentUserId);
           setPendingTaskId(null);
           return;
         }
         if (status.status === 'failed') {
-          storage.clearPendingTask();
+          storage.clearPendingTask(currentUserId);
           setPendingTaskId(null);
           setActionMessage('生成任务失败，可回到生成页重试。');
           return;
@@ -124,7 +126,7 @@ const TreePage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [pendingTaskId, setSkillTree]);
+  }, [pendingTaskId, setSkillTree, currentUserId]);
 
   const handleExportHtml = async () => {
     if (!skillTree || isExportingHtml) return;
@@ -320,11 +322,43 @@ const TreePage: React.FC = () => {
   }
 
   if (!skillTree) {
+    const isLoggedIn = !!state.auth?.user;
+    
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-app-muted">{loadError || '还没有可展示的技能树'}</p>
-          <Link to="/generate" className="text-skill-core font-bold hover:underline">去生成第一张地图 →</Link>
+        <div className="text-center space-y-6 max-w-md mx-auto px-6">
+          <div className="flex justify-center mb-6">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-skill-core/20 bg-skill-core/10">
+              <GitBranch size={40} className="text-skill-core" />
+            </div>
+          </div>
+          
+          {loadError ? (
+            <>
+              <p className="text-red-400 text-sm">{loadError}</p>
+              {isLoggedIn && (
+                <Link to="/generate" className="inline-flex items-center justify-center rounded-xl bg-skill-core px-6 py-3 text-sm font-bold text-black hover:bg-skill-core/80 transition-all">
+                  去生成技能树
+                </Link>
+              )}
+            </>
+          ) : !isLoggedIn ? (
+            <>
+              <h2 className="text-2xl font-black text-app-text">登录后查看你的技能树</h2>
+              <p className="text-app-muted">登录账号后，你可以生成和管理自己的专属技能成长地图。</p>
+              <Link to="/login" className="inline-flex items-center justify-center rounded-xl bg-skill-core px-6 py-3 text-sm font-bold text-black hover:bg-skill-core/80 transition-all">
+                登录账号
+              </Link>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-black text-app-text">还没有技能树</h2>
+              <p className="text-app-muted">开始生成你的第一张专属技能成长地图吧！</p>
+              <Link to="/generate" className="inline-flex items-center justify-center rounded-xl bg-skill-core px-6 py-3 text-sm font-bold text-black hover:bg-skill-core/80 transition-all">
+                开始生成
+              </Link>
+            </>
+          )}
         </div>
       </div>
     );
@@ -348,8 +382,8 @@ const TreePage: React.FC = () => {
           />
         </div>
 
-        {/* 顶部悬浮信息栏 - 改为半透明紧凑设计 */}
-        <div className="tree-page-container pointer-events-none absolute left-2 right-2 top-2 sm:left-6 sm:top-6 z-10 max-w-md">
+        {/* 顶部悬浮信息栏 - 响应式布局，在大屏幕上居中并限制最大宽度 */}
+        <div className="tree-page-container pointer-events-none absolute left-2 right-2 top-2 sm:left-6 sm:top-6 z-10" style={{ maxWidth: '36rem' }}>
           <div className="tree-page-panel pointer-events-auto flex flex-col gap-2 sm:gap-3">
             <div className="flex items-center gap-3">
               <TreeSwitcher

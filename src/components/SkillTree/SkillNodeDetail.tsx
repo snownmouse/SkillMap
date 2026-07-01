@@ -21,7 +21,8 @@ const SkillNodeDetail: React.FC<SkillNodeDetailProps> = ({ node, treeId, onClose
   const isLoading = nodeCache?.isLoading || false;
   const cachedNode = nodeCache?.node || null;
 
-  const currentNode = cachedNode || node;
+  // 优先使用缓存数据，但确保它和传入的node.id一致
+  const currentNode = (cachedNode && cachedNode.id === node.id) ? cachedNode : node;
 
   const hasCoreInfo = currentNode.id === 'meta_growth' || Boolean(currentNode.description);
   const hasFullDetails = currentNode.id === 'meta_growth' || (
@@ -49,6 +50,8 @@ const SkillNodeDetail: React.FC<SkillNodeDetailProps> = ({ node, treeId, onClose
       if (result.success && result.treeData?.nodes?.[node.id]) {
         const newNodeData = result.treeData.nodes[node.id];
         console.log(`[handleLoadDetails] 节点数据更新: hasResources=${!!newNodeData.resources?.length}, hasSteps=${!!newNodeData.steps?.length}, hasTools=${!!newNodeData.tools?.length}`);
+        
+        // 同时更新两个地方：缓存和父组件的 skillTree
         dispatch({ type: 'SET_NODE_DETAIL_DATA', payload: { nodeId: node.id, node: newNodeData } });
         onNodeUpdated?.(node.id, newNodeData);
       } else {

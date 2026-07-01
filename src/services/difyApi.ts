@@ -1,4 +1,5 @@
 import { UserInput, SkillTreeData, PlanMeta, PlanPath, PlanPathOption, PlanStage } from '../types/skillTree';
+import { llmConfigService } from './llmConfig';
 
 // 任务状态接口
 export interface TaskStatus {
@@ -6,6 +7,7 @@ export interface TaskStatus {
   status: 'pending' | 'in_progress' | 'streaming' | 'skeleton_ready' | 'node_filled' | 'completed' | 'failed';
   progress?: number;
   phase?: string;
+  stage?: number; // 1: 准备, 2: 生成骨架, 3: 填充节点, 4: 完善保存, 5: 完成
   preview?: string;
   treeId?: string;
   nodeCount?: number;
@@ -73,6 +75,9 @@ export const difyApi = {
     } catch {
     }
 
+    // 合并前端 LLM 配置 header（若浏览器端有配置则覆盖后端默认）
+    Object.assign(headers, llmConfigService.buildHeaders());
+
     return headers;
   },
   /**
@@ -139,7 +144,7 @@ export const difyApi = {
    * 获取任务状态
    */
   async getTaskStatus(taskId: string): Promise<TaskStatus> {
-    const response = await fetch(`/api/trees/task/${taskId}`, {
+    const response = await fetch(`/api/tasks/${taskId}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
       credentials: 'include',

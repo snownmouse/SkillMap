@@ -59,10 +59,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             refreshToken: data.refreshToken,
             user: data.user
           };
+          
+          // 保存到新存储位置（使用用户ID）
+          storage.save({
+            auth: authState,
+            skillTree: null,
+            chatSessions: {},
+            activeNodeId: null,
+            nodeDetailsCache: {}
+          });
+          
           dispatch({ type: 'SET_AUTH', payload: authState });
-          const savedState = storage.load() || {};
-          savedState.auth = authState;
-          storage.save(savedState);
         }
         navigate(isRegister ? '/generate' : '/tree');
       } catch (fetchErr) {

@@ -8,11 +8,11 @@
 
 | 变量名 | 描述 | 可选值 | 默认值 |
 |--------|------|--------|--------|
-| `LLM_PROVIDER` | 当前使用的 AI 供应商 | `gemini`, `deepseek`, `siliconflow`, `qwen`, `ark`, `custom`, `dummy` | `ark` |
+| `LLM_PROVIDER` | 当前使用的 AI 供应商 | `gemini`, `deepseek`, `siliconflow`, `qwen`, `ark`, `custom`, `dummy` | `dummy` |
 | `PORT` | 服务器运行端口 | 数字 (如 3000) | `3000` |
 | `NODE_ENV` | 运行环境 | `development`, `production` | `development` |
 | `LLM_TEMPERATURE` | LLM 生成温度参数 | 0.0-2.0 | `0.3` |
-| `LLM_MAX_TOKENS` | LLM 最大生成 token 数 | 数字 | `4000` |
+| `LLM_MAX_TOKENS` | LLM 最大生成 token 数 | 数字 | `65536` |
 
 ### 数据库配置
 
@@ -94,7 +94,7 @@ NODE_ENV=staging|production -> 强制 PostgreSQL（必须配置 DB_HOST 等参�
 ## 3. LLM 通用参数
 
 - `LLM_TEMPERATURE`: 控制生成的随机性，较低的值使输出更确定性，较高值使输出更随机。默认 `0.3`
-- `LLM_MAX_TOKENS`: 生成内容的最大 token 数量。默认 `4000`
+- `LLM_MAX_TOKENS`: 生成内容的最大 token 数量。默认 `65536`
 
 ## 4. 数据库规范
 
@@ -122,13 +122,24 @@ NODE_ENV=staging|production -> 强制 PostgreSQL（必须配置 DB_HOST 等参�
 - 建议初始开发阶段将 `LLM_PROVIDER` 设为 `dummy`，以节省 API 额度并加快响应速度
 - 使用 SQLite 数据库配置更简单
 
-### 5.2 生产部署
+### 5.2 前端运行时配置（无需改 .env）
+
+如果只是想让单个浏览器使用自己的 API Key，不必修改 `.env` 或重启服务：
+
+1. 在网页右上角点击「设置」打开设置弹窗
+2. 找到「AI 模型配置」区块，选择供应商（gemini / deepseek / siliconflow / qwen / ark / custom / dummy）
+3. 填入 API Key、Base URL（可选）、Model（可选），点击「保存」
+4. 点击「测试连接」可验证配置是否可用
+
+配置仅保存在当前浏览器的 `localStorage` 中，每次请求通过 `X-LLM-Config` HTTP 头传给后端，**优先级高于 `.env` 中的默认值**，且只对当前浏览器生效。清除浏览器数据或点击设置中的「清除配置」即可恢复默认。
+
+### 5.3 生产部署
 - 确保 `NODE_ENV` 设为 `production`
 - 配置好真实的 API Key
 - `production/staging` 会强制使用 PostgreSQL
 - 如果配置了 `REDIS_URL`，缓存会落到 Redis；未配置时会自动降级为内存缓存
 
-### 5.3 代码风格
+### 5.4 代码风格
 - 遵循 TypeScript 最佳实践
 - 使用 TypeScript compiler 进行类型检查 (`npm run lint`)
 

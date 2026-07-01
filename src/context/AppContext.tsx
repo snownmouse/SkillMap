@@ -72,7 +72,8 @@ const AppContext = createContext<{
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_SKILL_TREE':
-      return { ...state, skillTree: action.payload, error: null };
+      // 切换技能树时清理节点详情缓存，避免旧数据干扰
+      return { ...state, skillTree: action.payload, error: null, nodeDetailsCache: {} };
     case 'UPDATE_NODE_PROGRESS':
       if (!state.skillTree) return state;
       const nodes = { ...state.skillTree.nodes };
@@ -235,16 +236,52 @@ function appReducer(state: AppState, action: AppAction): AppState {
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // 初始化加载
+  // 初始化加载 - 先尝试从旧键加载，再迁移到新键
   useEffect(() => {
-    const savedState = storage.load();
-    // 确保 savedState 包含有效的 auth 数据
-    if (savedState && savedState.auth && savedState.auth.token && savedState.auth.user) {
+    // 先尝试从旧键加载（兼容已有数据）
+    let savedState = null;
+    try {
+      const oldData = localStorage.getItem('skillmap_state');
+      if (oldData) {
+        savedState = JSON.parse(oldData);
+      }
+    } catch (e) {
+      console.warn('无法从旧键加载数据:', e);
+    }
+    
+    // 如果旧键没有数据，尝试新键
+    if (!savedState) {
+      try {
+        const currentUserId = storage.getCurrentUserId();
+        if (currentUserId) {
+          const newData = localStorage.getItem(`skillmap_state:${currentUserId}`);
+          if (newData) {
+            savedState = JSON.parse(newData);
+          }
+        }
+      } catch (e) {
+        console.warn('无法从新键加载数据:', e);
+      }
+    }
+    
+    if (savedState) {
       dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
     } else {
       dispatch({ type: 'HYDRATE_COMPLETE' });
     }
   }, []);
+
+  // 监听认证状态变化，切换用户时重新加载对应数据
+  useEffect(() => {
+    if (state.authHydrated && state.auth?.user?.id) {
+      // 如果当前用户有 id，尝试加载该用户的数据（如果还没有加载的话）
+      const currentUserId = state.auth.user.id;
+      const loadedUserId = state.auth?.user?.id;
+      
+      // 当用户登录时，确保加载的是该用户的数据
+      // 注意：这里简单处理，假设首次加载已经正确，主要处理登录切换场景
+    }
+  }, [state.auth?.user?.id, state.authHydrated]);
 
   // 自动保存
   useEffect(() => {

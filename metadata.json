@@ -1,6 +1,0 @@
-{
-  "name": "SkillMap",
-  "description": "对话驱动的技能探索地图 - AI生成个性化技能树 + 可视化渲染 + 节点对话复盘 + 进度追踪",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
-}

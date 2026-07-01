@@ -20,24 +20,14 @@ function isAppError(error: any): error is { statusCode: number; userMessage: str
   );
 }
 
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
-function isBcryptHash(value: string): boolean {
-  return typeof value === 'string' && value.startsWith('$2');
-}
-
-async function hashPasswordBcrypt(password: string): Promise<string> {
+function hashPasswordBcrypt(password: string): Promise<string> {
   const rounds = Math.min(14, Math.max(10, parseInt(process.env.BCRYPT_COST || '12')));
-  return await bcrypt.hash(password, rounds);
+  return bcrypt.hash(password, rounds);
 }
 
-async function verifyPasswordHash(storedHash: string, password: string): Promise<{ ok: boolean; upgradeToBcrypt: boolean }> {
-  if (storedHash && isBcryptHash(storedHash)) {
-    return { ok: await bcrypt.compare(password, storedHash), upgradeToBcrypt: false };
-  }
-  return { ok: storedHash === hashPassword(password), upgradeToBcrypt: true };
+function verifyPasswordHash(storedHash: string, password: string): Promise<boolean> {
+  if (!storedHash) return Promise.resolve(false);
+  return bcrypt.compare(password, storedHash);
 }
 
 function generateToken(): string {
@@ -326,20 +316,12 @@ export const authController = {
       }
 
       const verification = await verifyPasswordHash(String(user.password_hash || ''), password);
-      if (!verification.ok) {
+      if (!verification) {
         await recordLoginFailure(clientIp);
         throw errors.unauthorized('用户名或密码错误');
       }
 
       await recordLoginSuccess(clientIp);
-
-      if (verification.upgradeToBcrypt) {
-        try {
-          const upgraded = await hashPasswordBcrypt(password);
-          await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [upgraded, user.id]);
-        } catch {
-        }
-      }
 
       await pool.query('DELETE FROM sessions WHERE user_id = $1', [user.id]);
 
@@ -619,7 +601,7 @@ export const authController = {
       }
 
       const verification = await verifyPasswordHash(String(user.password_hash || ''), oldPassword);
-      if (!verification.ok) {
+      if (!verification) {
         throw errors.unauthorized('旧密码错误');
       }
 

@@ -3,12 +3,13 @@ import { llmService } from '../llmService';
 import { getCareerPlanPrompt } from '../prompts/careerPlan';
 import { GenerateTreeRequest } from '../../types/backend';
 import { logger } from '../utils/logger';
+import { createProviderFromConfig, isRequestConfigEffective } from '../utils/llmConfigFactory';
 
 export const careerPlanController = {
   async analyze(req: Request, res: Response) {
     try {
       const inputs: GenerateTreeRequest = req.body;
-      
+
       if (!inputs.major || !inputs.career || typeof inputs.career !== 'string' || inputs.career.trim() === '') {
         return res.status(400).json({ error: '专业和目标职业是必填项' });
       }
@@ -16,7 +17,10 @@ export const careerPlanController = {
       logger.info('收到职业规划分析请求', { inputs });
 
       const { system, user } = getCareerPlanPrompt(inputs);
-      const result = await llmService.chatJSON(system, user);
+      const providerOverride = isRequestConfigEffective(req.llmConfig)
+        ? createProviderFromConfig(req.llmConfig)
+        : undefined;
+      const result = await llmService.chatJSON(system, user, providerOverride);
 
       res.json({
         success: true,

@@ -16,6 +16,7 @@ import type { PlanMeta } from '../../types/skillTree';
 import { logger } from '../utils/logger';
 import { enqueueTask, getTaskQueueMode } from '../services/TaskQueueService';
 import { modelRegistry, OrchestratorAgent, ChineseDimensionScore } from '../agents';
+import { createProviderFromConfig, isRequestConfigEffective, type RequestLlmConfig } from '../utils/llmConfigFactory';
 
 const TASK_TIMEOUT_MS = parseInt(process.env.TREE_GENERATION_TIMEOUT_MS || '1200000');
 const TREE_GENERATION_MODE = process.env.TREE_GENERATION_MODE || 'skeleton';
@@ -25,6 +26,15 @@ const ORCHESTRATOR_ENABLED = process.env.ORCHESTRATOR_ENABLED !== 'false';
 setInterval(() => {
   cleanupStaleTasks(tasks);
 }, TASK_CLEANUP_INTERVAL_MS);
+
+// 规范用户 ID：与 treeController 中的逻辑保持一致
+function normalizeUserId(userId: string | undefined | null): string {
+  if (!userId) return 'default';
+  if (userId.startsWith('guest_') || userId.startsWith('temp_') || userId.startsWith('device_')) {
+    return 'default';
+  }
+  return userId;
+}
 
 function extractDimensionScores(inputs: GenerateTreeRequest): ChineseDimensionScore[] {
   const raw = (inputs as any).dimensionScores;
@@ -110,6 +120,7 @@ interface Task {
   error?: string;
   progress?: number;
   phase?: string;
+  stage?: number; // 1: 准备, 2: 生成骨架, 3: 填充节点, 4: 完善保存, 5: 完成
   preview?: string;
   treeId?: string;
   cancelled?: boolean;
@@ -119,6 +130,7 @@ interface Task {
   incrementalNodes?: Record<string, any>;
   incrementalMeta?: { career?: string; summary?: string; version?: string; estimatedMonths?: number; overallObjective?: string; overallKeyResults?: string[]; categories?: any[] };
   lastDbUpdateAt?: number;
+  llmConfig?: RequestLlmConfig;
 }
 
 // 任务存储
@@ -184,25 +196,33 @@ async function processTask(taskId: string) {
     task.status = 'in_progress';
     task.progress = 5;
     task.phase = '准备生成';
+    task.stage = 1;
     task.updatedAt = new Date();
     tasks.set(taskId, task);
-    notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase: task.phase, progress: task.progress });
+    notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase: task.phase, progress: task.progress, stage: task.stage });
 
     const pool = getDb();
     await upsertTaskRow(pool, task);
+
+    // 若请求带来了前端 LLM 配置，则为本次任务构建临时 provider 覆盖
+    const providerOverride = isRequestConfigEffective(task.llmConfig)
+      ? createProviderFromConfig(task.llmConfig)
+      : undefined;
 
     const orchOutput = generateDesignInstructions(task.inputs);
     if (orchOutput) {
       logger.info('编排者生成设计指令', { taskId, narrativeSummary: orchOutput.narrativeSummary });
       task.phase = orchOutput.nationalAlignmentSummary || '已分析你的发展方向';
-      task.progress = 8;
+      task.progress = 5;
+      task.stage = 1;
       task.updatedAt = new Date();
       tasks.set(taskId, task);
       notifyTaskUpdate(taskId, {
         status: 'in_progress',
         userId: task.userId,
         phase: task.phase,
-        progress: 8,
+        progress: 5,
+        stage: task.stage,
         message: orchOutput.ancientQuote,
       });
     }
@@ -344,9 +364,10 @@ async function processTask(taskId: string) {
               const mapped = 5 + Math.min(90, Math.round(progress * 0.9));
               task.phase = phase;
               task.progress = mapped;
+              task.stage = 3; // 填充节点阶段
               task.updatedAt = new Date();
               tasks.set(taskId, task);
-              notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase, progress: mapped, nodeCount: task.nodeCount });
+              notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase, progress: mapped, nodeCount: task.nodeCount, stage: task.stage });
             },
             onMeta: (meta) => {
               task.incrementalMeta = { ...task.incrementalMeta, ...meta };
@@ -376,6 +397,7 @@ async function processTask(taskId: string) {
                 nodeCount: task.nodeCount,
                 progress: task.progress,
                 phase: task.phase || `已生成 ${task.nodeCount} 个节点`,
+                stage: task.stage,
               });
 
               task.phase = `已生成 ${task.nodeCount} 个节点`;
@@ -384,7 +406,7 @@ async function processTask(taskId: string) {
             }
           },
           undefined,
-          ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined
+          providerOverride || (ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined)
         )
       );
 
@@ -415,10 +437,11 @@ async function processTask(taskId: string) {
       task.result = { id: treeId, data: treeData };
       task.progress = 100;
       task.phase = '生成完成';
+      task.stage = 5; // 完成阶段
       task.nodeCount = Object.keys(treeData.nodes).length;
       task.updatedAt = new Date();
       tasks.set(taskId, task);
-      notifyTaskUpdate(taskId, { status: 'completed', userId: task.userId, treeId, progress: 100, phase: task.phase, nodeCount: task.nodeCount });
+      notifyTaskUpdate(taskId, { status: 'completed', userId: task.userId, treeId, progress: 100, phase: task.phase, nodeCount: task.nodeCount, stage: task.stage });
       await upsertTaskRow(pool, task);
       return;
     }
@@ -439,16 +462,18 @@ async function processTask(taskId: string) {
               {
                 onChunk: pushPreview,
                 onPhase: (phase, progress) => {
-                  const mapped = 5 + Math.min(30, Math.round(progress * 0.35));
+                  // 使用平滑映射：5% 到 38%，留出 2% 的平滑过渡空间
+                  const mapped = 5 + Math.min(33, progress * 0.33);
                   task.phase = phase;
                   task.progress = mapped;
+                  task.stage = 2; // 生成骨架阶段
                   task.updatedAt = new Date();
                   tasks.set(taskId, task);
-                  notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase, progress: mapped });
+                  notifyTaskUpdate(taskId, { status: 'in_progress', userId: task.userId, phase, progress: mapped, stage: task.stage });
                 }
               },
               undefined,
-              ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined
+              providerOverride || (ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined)
             )
           );
         })();
@@ -472,12 +497,13 @@ async function processTask(taskId: string) {
 
     task.status = 'skeleton_ready';
     task.treeId = treeId;
-    task.progress = 40;
+    task.progress = 40; // 骨架完成后设置为 40%，留出空间给节点填充阶段
     task.phase = '树结构已生成，正在填充节点详情...';
+    task.stage = 3; // 准备进入填充节点阶段
     task.result = { id: treeId, data: skeleton };
     task.updatedAt = new Date();
     tasks.set(taskId, task);
-    notifyTaskUpdate(taskId, { status: 'skeleton_ready', userId: task.userId, treeId, phase: task.phase, progress: task.progress });
+    notifyTaskUpdate(taskId, { status: 'skeleton_ready', userId: task.userId, treeId, phase: task.phase, progress: task.progress, stage: task.stage });
     await upsertTaskRow(pool, task);
 
     // 继续生成节点详情
@@ -503,7 +529,7 @@ async function processTask(taskId: string) {
 
         const { system, user } = getNodeDetailsPrompt(task.inputs, nodesMeta, 'core' as DetailLevel);
         const detailsRaw = await withTimeout(
-          llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined)
+          llmService.chatJSON(system, user, providerOverride || (ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined))
         );
 
         const details = Array.isArray(detailsRaw) ? detailsRaw : [];
@@ -524,11 +550,15 @@ async function processTask(taskId: string) {
           skeleton.nodes[id] = { ...skeleton.nodes[id], ...detail, id };
           completedNodes++;
 
-          const progress = 40 + Math.round((completedNodes / Math.max(1, nodeIds.length)) * 55);
+          // 使用平滑进度计算：40% 到 95%，留出 5% 的完成阶段
+          const progress = 40 + (completedNodes / Math.max(1, nodeIds.length)) * 55;
           task.progress = progress;
           task.updatedAt = new Date();
           tasks.set(taskId, task);
-          notifyTaskUpdate(taskId, { status: 'node_filled', userId: task.userId, treeId, nodeId: id, nodeData: skeleton.nodes[id], progress });
+          // 只在实际进度变化超过 1% 时才通知前端，减少不必要的更新
+          if (progress - (task.progress || 0) >= 1 || completedNodes === nodeIds.length) {
+            notifyTaskUpdate(taskId, { status: 'node_filled', userId: task.userId, treeId, nodeId: id, nodeData: skeleton.nodes[id], progress });
+          }
         }
 
         await pool.query(
@@ -564,6 +594,7 @@ async function processTask(taskId: string) {
     task.status = 'completed';
     task.result = { id: treeId, data: skeleton };
     task.progress = 100;
+    task.stage = 5; // 完成阶段
     task.error = hadFailures ? '部分节点详情生成失败' : undefined;
     task.updatedAt = new Date();
     tasks.set(taskId, task);
@@ -573,6 +604,7 @@ async function processTask(taskId: string) {
       treeId,
       progress: 100,
       phase: hadFailures ? '生成完成（部分节点待补全）' : '生成完成',
+      stage: task.stage,
       message: hadFailures ? '部分节点详情生成失败，可先浏览结构与已填充内容' : undefined
     });
   } catch (error) {
@@ -720,7 +752,8 @@ export const treeController = {
         inputs: inputs,
         userId,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        llmConfig: req.llmConfig,
       };
       tasks.set(taskId, task);
       const pool = getDb();
@@ -755,13 +788,16 @@ export const treeController = {
       const { taskId } = req.params;
       const task = tasks.get(taskId);
 
-      const requesterId = (req as any).user?.id || 'default';
+      // 规范化请求者的 userId，与任务创建的逻辑保持一致
+      const requesterId = normalizeUserId((req as any).user?.id);
       if (task) {
-        if (task.userId !== requesterId) {
+        // 任务的 userId 也需要规范化
+        const taskUserId = normalizeUserId(task.userId);
+        if (taskUserId !== requesterId) {
           return res.status(404).json({ error: '任务不存在' });
         }
         const pool = getDb();
-        const metaRes = await pool.query('SELECT attempts, max_attempts, next_retry_at FROM tasks WHERE id = $1 AND user_id = $2', [taskId, requesterId]);
+        const metaRes = await pool.query('SELECT attempts, max_attempts, next_retry_at FROM tasks WHERE id = $1 AND user_id = $2', [taskId, taskUserId]);
         const meta: any = metaRes.rows?.[0] || {};
         res.json({
           taskId: task.id,
@@ -783,10 +819,16 @@ export const treeController = {
       }
 
       const pool = getDb();
+      // 直接使用规范化的 userId 查询
       const dbRes = await pool.query(
         'SELECT id, status, progress, stage, message, tree_id, error, created_at, updated_at, attempts, max_attempts, next_retry_at FROM tasks WHERE id = $1 AND user_id = $2',
         [taskId, requesterId]
       );
+
+      if ((dbRes.rows || []).length === 0) {
+        return res.status(404).json({ error: '任务不存在' });
+      }
+
       if ((dbRes.rows || []).length === 0) {
         return res.status(404).json({ error: '任务不存在' });
       }
@@ -797,6 +839,7 @@ export const treeController = {
         error: row.error ? String(row.error) : undefined,
         progress: typeof row.progress === 'number' ? row.progress : parseInt(row.progress || '0'),
         phase: row.stage ? String(row.stage) : undefined,
+        stage: typeof row.stage === 'number' ? row.stage : undefined,
         treeId: row.tree_id ? String(row.tree_id) : undefined,
         attempts: typeof row.attempts === 'number' ? row.attempts : parseInt(row.attempts || '0'),
         maxAttempts: row.max_attempts == null ? undefined : (typeof row.max_attempts === 'number' ? row.max_attempts : parseInt(row.max_attempts || '0')),
@@ -945,7 +988,10 @@ export const treeController = {
       };
 
       const { system, user } = getExpandTreePrompt(inputs, existingData as any, existingNodeIds);
-      const expandRaw = await llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined);
+      const expandProviderOverride = isRequestConfigEffective(req.llmConfig)
+        ? createProviderFromConfig(req.llmConfig)
+        : (ORCHESTRATOR_ENABLED ? modelRegistry.getSkeleton() : undefined);
+      const expandRaw = await llmService.chatJSON(system, user, expandProviderOverride);
 
       const newNodes = expandRaw?.nodes || {};
       const newEdges = expandRaw?.edges || [];
@@ -1266,6 +1312,9 @@ export const treeController = {
       }
 
       const filledNodes: string[] = [];
+      const fillProviderOverride = isRequestConfigEffective(req.llmConfig)
+        ? createProviderFromConfig(req.llmConfig)
+        : (ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined);
 
       // 每个节点单独生成详情，互不影响
       for (const nid of targetNodeIds) {
@@ -1279,7 +1328,7 @@ export const treeController = {
           };
 
           const { system, user } = getNodeDetailsPrompt(inputs, [nodeMeta], 'full' as DetailLevel);
-          const detailsRaw = await llmService.chatJSON(system, user, ORCHESTRATOR_ENABLED ? modelRegistry.getDetail() : undefined);
+          const detailsRaw = await llmService.chatJSON(system, user, fillProviderOverride);
           const details = Array.isArray(detailsRaw) ? detailsRaw : [];
 
           if (details.length > 0) {
@@ -1290,7 +1339,9 @@ export const treeController = {
             }
           }
         } catch (error) {
-          logger.error(`节点 ${nid} 处理失败:`, error);
+          logger.error(`节点 ${nid} 处理失败 - 详细错误:`, error);
+          logger.error(`错误类型:`, error?.constructor?.name);
+          logger.error(`错误消息:`, error?.message);
           // 继续处理其他节点
         }
       }

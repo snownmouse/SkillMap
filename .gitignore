@@ -9,8 +9,6 @@ coverage/
 *.db
 *.db-shm
 *.db-wal
-benchmark/
-dataset/
 .iga/
 skill-tree-report.html
 remove-bad-file.ps1

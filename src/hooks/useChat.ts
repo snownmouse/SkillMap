@@ -136,6 +136,15 @@ export function useChat() {
     loadedHistoryRef.current.add(nodeId);
 
     try {
+      console.log('[sendMessage] 开始发送消息到后端:', nodeId);
+      console.log('[sendMessage] API 请求参数:', {
+        nodeId,
+        nodeName: node.name,
+        currentProgress: node.progress,
+        userMessage: content,
+        treeId: currentState.skillTree.id
+      });
+      
       const result = await apiClient.sendChatMessage({
         nodeId,
         nodeName: node.name,
@@ -146,6 +155,8 @@ export function useChat() {
         conversationId: '',
         treeId: currentState.skillTree.id,
       }) as ChatResponseResult;
+
+      console.log('[sendMessage] 后端返回成功:', result.reply?.substring(0, 100));
 
       // 重新从后端拉取最新的技能树数据，确保进度和所有数据都是最新的
       try {
@@ -222,8 +233,19 @@ export function useChat() {
       }
 
     } catch (e) {
-      console.error('发送消息失败:', e);
-      dispatch({ type: 'SET_ERROR', payload: '发送消息失败，请重试' });
+      console.error('发送消息失败 - 详细错误:', e);
+      console.error('错误类型:', e?.constructor?.name);
+      console.error('错误消息:', e?.message);
+      console.error('错误响应:', e?.response?.data);
+      
+      let errorMessage = '发送消息失败，请重试';
+      if (e?.response?.data?.error) {
+        errorMessage = e.response.data.error;
+      } else if (e?.message) {
+        errorMessage = `网络错误: ${e.message}`;
+      }
+      
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
     } finally {
       setSendingNodes(prev => {
         const next = new Set(prev);

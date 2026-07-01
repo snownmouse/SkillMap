@@ -4,6 +4,7 @@ import { getCareerPlanPrompt } from '../prompts/careerPlan';
 import { GenerateTreeRequest } from '../../types/backend';
 import { logger } from '../utils/logger';
 import { errors } from '../middleware/errorHandler';
+import { createProviderFromConfig, isRequestConfigEffective } from '../utils/llmConfigFactory';
 
 export interface Dimension {
   valueAlignment: number;
@@ -86,7 +87,10 @@ export const careerController = {
       logger.info('开始生成职业规划', { major: inputs.major, career: inputs.career });
 
       const { system, user } = getCareerPlanPrompt(inputs);
-      const planData: CareerPlanResponse = await llmService.chatJSON(system, user);
+      const providerOverride = isRequestConfigEffective(req.llmConfig)
+        ? createProviderFromConfig(req.llmConfig)
+        : undefined;
+      const planData: CareerPlanResponse = await llmService.chatJSON(system, user, providerOverride);
 
       if (!validateCareerPlan(planData)) {
         logger.warn('AI 返回的规划数据格式不完整，尝试修复', {

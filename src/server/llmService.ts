@@ -83,7 +83,8 @@ class LLMService {
           config.llm.gemini.apiKey,
           config.llm.gemini.model,
           temperature,
-          maxTokens
+          maxTokens,
+          requestTimeoutMs
         );
         break;
     }

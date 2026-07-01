@@ -1,6 +1,7 @@
 import { UserInput, SkillTreeData } from '../types/skillTree';
 import { handleError, createError } from '../utils/errorHandler';
 import { withCache, cache } from '../utils/cache';
+import { llmConfigService } from './llmConfig';
 
 interface CareerPath {
   id: string;
@@ -40,6 +41,7 @@ function getAuthHeaders(): Record<string, string> {
   } catch (error) {
     console.warn('本地存储被禁用:', error);
   }
+  Object.assign(headers, llmConfigService.buildHeaders());
   return headers;
 }
 
@@ -65,7 +67,7 @@ async function fetchApi<T>(url: string, options: RequestInit = {}, retryCount = 
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 600000); // 10分钟超时
 
   try {
     const response = await fetch(url, {

@@ -7,6 +7,7 @@ export interface TaskUpdate {
   status: 'pending' | 'in_progress' | 'streaming' | 'skeleton_ready' | 'node_filled' | 'completed' | 'failed';
   progress?: number;
   phase?: string;
+  stage?: number; // 1: 准备, 2: 生成骨架, 3: 填充节点, 4: 完善保存, 5: 完成
   preview?: string;
   treeId?: string;
   error?: string;

@@ -94,7 +94,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
     setPlanningLoading(true);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 分钟超时
       const result = await difyApi.getPlanningPaths({
         ...formData,
         longTermGoal: longTermGoal || formData.career,
@@ -105,7 +105,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
       setSelectedPathId(initialSelected);
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') {
-        setPlanningError('请求超时，请稍后重试');
+        setPlanningError('请求响应时间较长，请稍后重试或直接跳过此步骤');
       } else {
         setPlanningError(e instanceof Error ? e.message : '生成路径建议失败');
       }
@@ -152,7 +152,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
             <p className="text-app-muted text-sm sm:text-base">选择一个大类，然后告诉我们你具体的职业愿景</p>
           </div>
 
-          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {CAREER_CATEGORIES.map(cat => (
             <button
                 key={cat.id}
@@ -164,7 +164,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
                 }`}
               >
                 <div className="text-2xl sm:text-3xl mb-2 sm:mb-3 transform transition-transform group-hover:scale-110">{cat.icon}</div>
-                <div className={`font-bold text-base sm:text-lg ${selectedCategory === cat.name ? 'text-skill-core' : 'text-app-text'}`}>{cat.name}</div>
+                <div className={`font-bold text-sm sm:text-lg ${selectedCategory === cat.name ? 'text-skill-core' : 'text-app-text'}`}>{cat.name}</div>
                 <div className="text-xs text-app-muted mt-1 opacity-80 group-hover:opacity-100 transition-opacity hidden sm:block">{cat.examples}</div>
               </button>
             ))}
@@ -227,7 +227,7 @@ const GenerateForm: React.FC<GenerateFormProps> = ({ onSubmit, isLoading }) => {
               >
                 <div className="text-3xl sm:text-4xl transform transition-transform group-hover:scale-110">{level.icon}</div>
                 <div>
-                  <div className={`font-bold text-base sm:text-lg mb-1 ${formData.level === level.id ? 'text-skill-core' : 'text-app-text'}`}>{level.name}</div>
+                  <div className={`font-bold text-sm sm:text-lg mb-1 ${formData.level === level.id ? 'text-skill-core' : 'text-app-text'}`}>{level.name}</div>
                   <div className="text-sm text-app-muted opacity-80 hidden sm:block">{level.desc}</div>
                 </div>
               </button>

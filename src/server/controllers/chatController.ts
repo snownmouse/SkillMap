@@ -10,11 +10,19 @@ import { BloomLevel, CoachSnapshot, KolbStage } from '../../types/skillTree';
 import { getAllowedUserIds } from '../utils/auth';
 import { modelRegistry } from '../agents';
 import { ILLMProvider } from '../llmProviders/base';
+import { createProviderFromConfig, isRequestConfigEffective } from '../utils/llmConfigFactory';
 
 const COACH_ENABLED = process.env.ORCHESTRATOR_ENABLED !== 'false';
 
 function getCoachProvider(): ILLMProvider | undefined {
   return COACH_ENABLED ? modelRegistry.getCoach() : undefined;
+}
+
+function resolveCoachProvider(req: Request): ILLMProvider | undefined {
+  if (isRequestConfigEffective(req.llmConfig)) {
+    return createProviderFromConfig(req.llmConfig);
+  }
+  return getCoachProvider();
 }
 
 async function withClient<T>(pool: any, fn: (client: any) => Promise<T>): Promise<T> {
@@ -166,7 +174,7 @@ export const chatController = {
       });
 
       const aiResult = normalizeChatResult(
-        await llmService.chatJSON(system, user, getCoachProvider()),
+        await llmService.chatJSON(system, user, resolveCoachProvider(req)),
         nodeId,
         node.progress
       );
@@ -238,7 +246,10 @@ export const chatController = {
         timelineEvent: aiResult.timelineEvent
       });
     } catch (error) {
-      console.error('对话失败:', error);
+      console.error('对话失败 - 详细错误:', error);
+      console.error('错误类型:', error?.constructor?.name);
+      console.error('错误消息:', error?.message);
+      console.error('错误堆栈:', error?.stack);
       res.status(500).json({ error: '对话处理失败' });
     }
   },
@@ -325,7 +336,7 @@ export const chatController = {
         isSummaryNode: nodeId === 'meta_growth'
       });
 
-      const aiResult = await llmService.chatJSON(system, user, getCoachProvider());
+      const aiResult = await llmService.chatJSON(system, user, resolveCoachProvider(req));
       res.json(aiResult);
     } catch (error) {
       console.error('生成摘要失败:', error);
@@ -393,7 +404,7 @@ export const chatController = {
         isSummaryNode: nodeId === 'meta_growth'
       });
 
-      const aiResult = await llmService.chatJSON(system, user, getCoachProvider());
+      const aiResult = await llmService.chatJSON(system, user, resolveCoachProvider(req));
       res.json(aiResult);
     } catch (error) {
       console.error('生成学习建议失败:', error);

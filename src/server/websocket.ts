@@ -5,6 +5,16 @@ import { getPool } from './database';
 import { logger } from './utils/logger';
 import { pubsubPublish, pubsubSubscribe } from './services/RedisService';
 
+// 规范用户 ID：与 treeController.ts 中的逻辑保持一致
+function normalizeUserId(userId: string | undefined | null): string {
+  if (!userId) return 'default';
+  // 对于临时用户，统一用 'default' 作为 user_id
+  if (userId.startsWith('guest_') || userId.startsWith('temp_') || userId.startsWith('device_')) {
+    return 'default';
+  }
+  return userId;
+}
+
 interface WSClient {
   ws: WebSocket;
   userId: string;
@@ -289,8 +299,18 @@ function handleMessage(clientId: string, message: any) {
           const pool = getPool();
           const res = await pool.query('SELECT user_id FROM tasks WHERE id = $1', [message.taskId]);
           const owner = res.rows?.[0]?.user_id ? String(res.rows[0].user_id) : null;
-          if (!owner || owner !== client.userId) {
-            logger.warn('WebSocket 订阅任务拒绝：任务不属于当前用户', { clientId, taskId: message.taskId });
+          
+          // Guest 用户在前端被规范化为 'default'，需要在这里做相同的处理
+          const clientUserId = normalizeUserId(client.userId);
+          
+          if (!owner || owner !== clientUserId) {
+            logger.warn('WebSocket 订阅任务拒绝：任务不属于当前用户', { 
+              clientId, 
+              taskId: message.taskId,
+              owner,
+              clientUserId: clientUserId,
+              originalClientUserId: client.userId
+            });
             return;
           }
           client.taskId = message.taskId;
@@ -362,7 +382,7 @@ export function notifyTaskUpdate(taskId: string, update: {
   treeId?: string;
   error?: string;
   progress?: number;
-  stage?: string;
+  stage?: number; // 1: 准备, 2: 生成骨架, 3: 填充节点, 4: 完善保存, 5: 完成
   message?: string;
   phase?: string;
   preview?: string;
@@ -392,7 +412,9 @@ function sendTaskUpdateToClients(taskId: string, update: any) {
     let sent = 0;
     for (const [_clientId, client] of clients) {
       if (client.taskId === taskId && client.ws.readyState === WebSocket.OPEN) {
-        if (update.userId && client.userId !== update.userId) continue;
+        // 需要规范化客户端用户 ID，因为任务更新中的 userId 可能已经被规范化为 'default'
+        const clientUserId = normalizeUserId(client.userId);
+        if (update.userId && clientUserId !== update.userId) continue;
         client.ws.send(payload);
         sent++;
       }
@@ -424,7 +446,9 @@ export function notifyProgressUpdate(userId: string, update: {
 
     let sent = 0;
     for (const [_clientId, client] of clients) {
-      if (client.userId === userId && client.ws.readyState === WebSocket.OPEN) {
+      // 需要规范化客户端用户 ID，保持一致性
+      const clientUserId = normalizeUserId(client.userId);
+      if (clientUserId === userId && client.ws.readyState === WebSocket.OPEN) {
         client.ws.send(payload);
         sent++;
       }

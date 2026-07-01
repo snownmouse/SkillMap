@@ -55,9 +55,11 @@ export async function registerMiddleware(app: express.Express) {
   const { securityHeaders, sanitizeInput, bodySizeLimit } = await import('./middleware/security');
   const { requestTracer } = await import('./middleware/requestTracer');
   const { metricsMiddleware } = await import('./middleware/metrics');
+  const { parseLlmConfig } = await import('./middleware/llmConfig');
 
   app.use(securityHeaders);
   app.use(sanitizeInput);
+  app.use(parseLlmConfig);
   app.use(requestTracer);
   app.use(metricsMiddleware);
 
@@ -79,6 +81,7 @@ export async function registerRoutes(app: express.Express) {
   const assessmentRouter = await import('./routes/assessment');
   const careerPlanRouter = await import('./routes/careerPlan');
   const { benchmarkRouter } = await import('./routes/benchmark');
+  const { llmRouter } = await import('./routes/llm');
   const { optionalAuth, requireAuth } = await import('./controllers/authController');
   const { treeController } = await import('./controllers/treeController');
   const { llmRateLimiter } = await import('./middleware/llmRateLimit');
@@ -147,6 +150,9 @@ export async function registerRoutes(app: express.Express) {
 
   // 基准测试路由（无需认证）
   app.use('/api', benchmarkRouter);
+
+  // LLM 配置测试接口（无需登录，但走 optionalAuth 以便复用 cookie）
+  app.use('/api/llm', llmRouter);
 
   const { errorHandler } = await import('./middleware/errorHandler');
   app.use(errorHandler);

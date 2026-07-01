@@ -93,7 +93,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         return {
           width: 110,
           height: 110,
-          shape: 'ellipse',
+          shape: 'ellipse' as const,
           fontSize: 12,
           textMaxWidth: '95px'
         };
@@ -101,7 +101,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         return {
           width: 130,
           height: 55,
-          shape: 'round-rectangle',
+          shape: 'round-rectangle' as const,
           fontSize: 12,
           textMaxWidth: '115px'
         };
@@ -109,7 +109,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         return {
           width: 120,
           height: 45,
-          shape: 'rectangle',
+          shape: 'rectangle' as const,
           fontSize: 11,
           textMaxWidth: '105px'
         };
@@ -117,7 +117,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         return {
           width: 120,
           height: 45,
-          shape: 'round-rectangle',
+          shape: 'round-rectangle' as const,
           fontSize: 11,
           textMaxWidth: '105px'
         };
@@ -554,8 +554,8 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
             width: 3
           }
         }
-      ];
-      
+      ] as any,
+
       layout: getLayoutConfig(data) as any,
       userZoomingEnabled: true,
       userPanningEnabled: true,
@@ -639,7 +639,7 @@ const SkillTreeCanvasImpl: React.FC<SkillTreeCanvasImplProps> = ({ data, onNodeC
         cyRef.current = null;
       }
     };
-  }, [data, nodeStyle]);
+  }, [data, theme]);
 
   useEffect(() => {
     const cy = cyRef.current;

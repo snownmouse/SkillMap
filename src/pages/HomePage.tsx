@@ -1,19 +1,33 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bot, BrainCircuit, GitBranch, PartyPopper, Radar, Sparkles, Target } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useAppContext } from '../context/AppContext';
 
 /**
  * 首页
  */
 const HomePage: React.FC = () => {
   const { theme, cycleTheme } = useTheme();
+  const { state } = useAppContext();
+  const navigate = useNavigate();
+  
   const themeLabel = {
     default: '默认',
     childrens_day: '六一',
     growth: '成长',
     quiet_growth: '潜沉'
   }[theme];
+  
+  const isAuthenticated = state.auth?.token && state.auth?.user;
+  
+  const handleProtectedNavigate = (path: string) => {
+    if (isAuthenticated) {
+      navigate(path);
+    } else {
+      navigate('/login');
+    }
+  };
 
   return (
     <div className="app-shell px-4 py-6 md:px-6 flex items-center justify-center min-h-[calc(100vh-80px)] relative">
@@ -26,6 +40,17 @@ const HomePage: React.FC = () => {
         <Sparkles size={18} />
         <span>{themeLabel}</span>
       </button>
+
+      {/* 左上角项目名称 */}
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-skill-core/25 bg-skill-core/10 text-skill-core">
+          <Sparkles size={16} />
+        </div>
+        <div>
+          <div className="text-base font-black tracking-tight text-app-text">栖舟寻志</div>
+          <div className="text-[10px] uppercase tracking-[0.24em] text-app-muted">SkillMap</div>
+        </div>
+      </div>
 
       <div className="app-container max-w-4xl w-full">
         <div className="page-hero text-center space-y-10">
@@ -51,18 +76,29 @@ const HomePage: React.FC = () => {
 
           {/* 核心操作按钮 */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link 
-              to="/generate"
-              className="btn-primary inline-flex items-center justify-center rounded-2xl px-8 py-4 text-lg font-black transition-all shadow-xl shadow-skill-core/20"
-            >
-              开始生成我的 SkillMap
-            </Link>
-            <Link 
-              to="/tree"
-              className="btn-secondary inline-flex items-center justify-center rounded-2xl px-8 py-4 text-lg font-bold transition-all"
-            >
-              查看当前地图
-            </Link>
+            {!isAuthenticated ? (
+              <Link 
+                to="/login"
+                className="btn-primary inline-flex items-center justify-center rounded-2xl px-8 py-4 text-lg font-black transition-all shadow-xl shadow-skill-core/20"
+              >
+                登录开始使用
+              </Link>
+            ) : (
+              <>
+                <button 
+                  onClick={() => handleProtectedNavigate('/generate')}
+                  className="btn-primary inline-flex items-center justify-center rounded-2xl px-8 py-4 text-lg font-black transition-all shadow-xl shadow-skill-core/20"
+                >
+                  开始生成我的 SkillMap
+                </button>
+                <button 
+                  onClick={() => handleProtectedNavigate('/tree')}
+                  className="btn-secondary inline-flex items-center justify-center rounded-2xl px-8 py-4 text-lg font-bold transition-all"
+                >
+                  查看当前地图
+                </button>
+              </>
+            )}
           </div>
 
           {/* 底部三个小特点卡片 */}

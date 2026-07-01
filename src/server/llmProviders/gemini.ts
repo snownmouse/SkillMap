@@ -9,7 +9,8 @@ export class GeminiProvider implements ILLMProvider {
     private apiKey: string,
     private model: string,
     private temperature: number,
-    private maxTokens: number
+    private maxTokens: number,
+    private requestTimeoutMs: number = 600000 // 默认 10 分钟超时
   ) {
     this.ai = new GoogleGenAI({ apiKey: this.apiKey });
   }
@@ -28,16 +29,21 @@ export class GeminiProvider implements ILLMProvider {
       parts: [{ text: m.content }]
     }));
 
-    const response = await this.ai.models.generateContent({
-      model: this.model,
-      contents,
-      config: {
-        systemInstruction: systemMessage?.content,
-        temperature: this.temperature,
-        maxOutputTokens: this.maxTokens,
-        responseMimeType: "application/json",
-      }
-    });
+    const response = await Promise.race([
+      this.ai.models.generateContent({
+        model: this.model,
+        contents,
+        config: {
+          systemInstruction: systemMessage?.content,
+          temperature: this.temperature,
+          maxOutputTokens: this.maxTokens,
+          responseMimeType: "application/json",
+        }
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`LLM 请求超时，超过 ${this.requestTimeoutMs}ms`)), this.requestTimeoutMs);
+      })
+    ]);
 
     return {
       content: response.text,

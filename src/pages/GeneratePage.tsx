@@ -6,21 +6,26 @@ import { difyApi, TaskStatus } from '../services/difyApi';
 import { storage } from '../services/storage';
 import { UserInput } from '../types/skillTree';
 import { useTaskWebSocket } from '../hooks/useTaskWebSocket';
+import { useAppContext } from '../context/AppContext';
 
 /**
  * 生成页
  */
 const GeneratePage: React.FC = () => {
-  const POLL_INTERVAL_MS = 10000;
+  const POLL_INTERVAL_MS = 15000; // 增加轮询间隔，给服务端更多处理时间
   const MAX_POLL_DURATION_MS = 1200000; // 20分钟
-  const MAX_NETWORK_FAILURES = 3;
+  const MAX_NETWORK_FAILURES = 5; // 增加重试次数，提高容错能力
   const navigate = useNavigate();
   const { setSkillTree, setGenerating, isGenerating, error, setError } = useSkillTree();
+  const { state: appState } = useAppContext();
+  const currentUserId = appState.auth?.user?.id;
+  
   const [career, setCareer] = useState('');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [targetProgress, setTargetProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
   const [phase, setPhase] = useState('正在准备...');
+  const [stage, setStage] = useState<number>(1); // 1: 准备, 2: 生成骨架, 3: 填充节点, 4: 完善保存, 5: 完成
   const [preview, setPreview] = useState('');
   const [canRetry, setCanRetry] = useState(false);
   const [attempts, setAttempts] = useState<number | null>(null);
@@ -29,51 +34,127 @@ const GeneratePage: React.FC = () => {
   const [nodeCount, setNodeCount] = useState<number>(0);
   const [recentNodes, setRecentNodes] = useState<Array<{ id: string; name: string; category: string }>>([]);
 
-  // 平滑进度条动画 - 10分钟基础进度，有更新时加速
+  // 统一的进度条速度配置
+  const BASE_SPEED_PER_SEC = 0.35; // 统一速度，避免阶段切换时的突兀变化
+  const MAX_CATCH_UP_SPEED = 0.8;  // 最大追赶速度（稍微提高以应对大跳跃）
+  const CATCH_UP_THRESHOLD = 0.5;  // 超过这个差距才开始追赶
+
+  // 平滑进度条动画
   useEffect(() => {
     let animationId: number;
-    let lastTargetUpdate = Date.now();
     let lastFrameTime = Date.now();
-    const TOTAL_DURATION_MS = 10 * 60 * 1000; // 10分钟
-    const BASE_SPEED_PER_MS = 100 / TOTAL_DURATION_MS; // 每毫秒的基础进度
-    
+
     const animate = () => {
       const now = Date.now();
       const deltaTime = now - lastFrameTime;
       lastFrameTime = now;
-      const timeSinceUpdate = now - lastTargetUpdate;
-      
+      const deltaSeconds = deltaTime / 1000;
+
       setDisplayProgress(prev => {
-        let newProgress = prev;
         const diff = targetProgress - prev;
-        
-        // 如果目标进度有变化，立即更新
-        if (Math.abs(diff) > 0.1) {
-          lastTargetUpdate = now;
-          // 有新内容生成时，快速接近目标进度
-          const catchUpStep = Math.min(diff * 0.3, 5);
-          newProgress = prev + catchUpStep;
-        } else {
-          // 没有新内容时，按10分钟的基础速度缓慢前进
-          const baseIncrement = BASE_SPEED_PER_MS * deltaTime;
-          newProgress = prev + baseIncrement;
+
+        // 如果目标进度还未设置，保持当前进度
+        if (targetProgress === undefined || targetProgress === null) {
+          return prev;
         }
-        
-        // 确保不超过99%，留一点空间给最后完成
-        return Math.max(0, Math.min(99, newProgress));
+
+        // 追赶模式：当差距超过阈值时进行追赶
+        if (diff > CATCH_UP_THRESHOLD) {
+          // 使用线性插值，让追赶速度与差距成正比，但有上限
+          const catchUpSpeed = Math.min(MAX_CATCH_UP_SPEED, diff * 0.2);
+          const catchUpStep = catchUpSpeed * deltaSeconds;
+          
+          // 使用平滑缓动：越接近目标越慢
+          const easingFactor = 1 - Math.pow(diff / 50, 2);
+          const easedStep = catchUpStep * (0.6 + 0.4 * Math.max(0, easingFactor));
+          
+          return Math.min(99.5, prev + easedStep);
+        } else if (diff < -CATCH_UP_THRESHOLD) {
+          // 后退情况（不应该发生，但处理一下）
+          const catchUpStep = Math.min(MAX_CATCH_UP_SPEED, Math.abs(diff) * 0.2) * deltaSeconds;
+          return Math.max(0, prev - catchUpStep);
+        } else {
+          // 正常前进模式：保持匀速前进，给用户持续工作的感觉
+          const baseIncrement = BASE_SPEED_PER_SEC * deltaSeconds;
+          // 如果已经非常接近目标，稍微放慢速度
+          const slowDownFactor = diff > 0 && diff < 2 ? diff / 2 : 1;
+          return Math.min(99.5, Math.max(0, prev + baseIncrement * slowDownFactor));
+        }
       });
-      
+
       // 持续动画，不会停止
       animationId = requestAnimationFrame(animate);
     };
-    
+
     animationId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationId);
   }, [targetProgress]);
 
+  const pollTaskStatus = useCallback(async (id: string, startedAt = Date.now()) => {
+    try {
+      const status: TaskStatus = await difyApi.getTaskStatus(id);
+      
+      switch (status.status) {
+        case 'completed':
+          if (status.result) {
+            setSkillTree(status.result.data);
+            storage.saveLastTreeId(status.result.id || status.result.data.id, currentUserId);
+            storage.clearPendingTask(currentUserId);
+            setGenerating(false);
+            navigate(status.result.id ? `/tree/${status.result.id}` : `/tree/${status.result.data.id}`, { replace: true });
+          }
+          break;
+        case 'failed':
+          storage.clearPendingTask(currentUserId);
+          setError(status.error || '生成失败，请稍后重试');
+          setGenerating(false);
+          setCanRetry(true);
+          setAttempts(status.attempts ?? null);
+          setMaxAttempts(status.maxAttempts ?? null);
+          setNextRetryAt(status.nextRetryAt ?? null);
+          break;
+        case 'pending':
+        case 'in_progress':
+        case 'streaming':
+        case 'node_filled':
+          if (Date.now() - startedAt > MAX_POLL_DURATION_MS) {
+            setError('生成时间过长，已停止自动等待。你可以稍后重新进入生成页继续检查结果。');
+            setGenerating(false);
+            return;
+          }
+          if (status.progress !== undefined) setTargetProgress(status.progress);
+          if (status.phase) setPhase(status.phase);
+          if (status.stage !== undefined) setStage(status.stage);
+          if (status.preview) setPreview(status.preview);
+          if (status.nodeCount !== undefined) setNodeCount(status.nodeCount);
+          setAttempts(status.attempts ?? null);
+          setMaxAttempts(status.maxAttempts ?? null);
+          setNextRetryAt(status.nextRetryAt ?? null);
+          setPhase(status.phase || '正在生成技能树...');
+          setTimeout(() => pollTaskStatus(id, startedAt), POLL_INTERVAL_MS);
+          break;
+        default:
+          break;
+      }
+    } catch (e) {
+      console.error('获取任务状态失败（继续等待）:', e);
+      // 服务端可能在处理耗时任务（如 DeepSeek API），不要停止轮询
+      // 继续等待，直到超过最大等待时间
+      if (Date.now() - startedAt > MAX_POLL_DURATION_MS) {
+        setError('生成时间过长，已停止自动等待。你可以稍后重新进入生成页继续检查结果。');
+        setGenerating(false);
+        return;
+      }
+      // 显示正在等待的状态，但不停止轮询
+      setPhase('正在等待服务端响应...（任务仍在后台运行）');
+      setTimeout(() => pollTaskStatus(id, startedAt), POLL_INTERVAL_MS);
+    }
+  }, [navigate, setError, setGenerating, setPhase, setPreview, setTargetProgress, setSkillTree, currentUserId]);
+
   useTaskWebSocket(taskId, async (update) => {
     if (update.progress !== undefined) setTargetProgress(update.progress);
     if (update.phase) setPhase(update.phase);
+    if (update.stage !== undefined) setStage(update.stage);
     if (update.preview) setPreview(update.preview);
     if (update.attempts !== undefined) setAttempts(update.attempts);
     if (update.maxAttempts !== undefined) setMaxAttempts(update.maxAttempts);
@@ -93,7 +174,7 @@ const GeneratePage: React.FC = () => {
         setSkillTree(tree);
       } catch {
       } finally {
-        storage.clearPendingTask();
+        storage.clearPendingTask(currentUserId);
         setGenerating(false);
         navigate(`/tree/${update.treeId}`, { replace: true });
       }
@@ -101,7 +182,7 @@ const GeneratePage: React.FC = () => {
     }
 
     if (update.status === 'failed') {
-      storage.clearPendingTask();
+      storage.clearPendingTask(currentUserId);
       setError(update.error || '生成失败，请稍后重试');
       setGenerating(false);
       setCanRetry(true);
@@ -109,63 +190,8 @@ const GeneratePage: React.FC = () => {
     }
   });
 
-  const pollTaskStatus = useCallback(async (id: string, startedAt = Date.now(), networkFailures = 0) => {
-    try {
-      const status: TaskStatus = await difyApi.getTaskStatus(id);
-      
-      switch (status.status) {
-        case 'completed':
-          if (status.result) {
-            setSkillTree(status.result.data);
-            storage.saveLastTreeId(status.result.id || status.result.data.id);
-            storage.clearPendingTask();
-            setGenerating(false);
-            navigate(status.result.id ? `/tree/${status.result.id}` : `/tree/${status.result.data.id}`, { replace: true });
-          }
-          break;
-        case 'failed':
-          storage.clearPendingTask();
-          setError(status.error || '生成失败，请稍后重试');
-          setGenerating(false);
-          setCanRetry(true);
-          setAttempts(status.attempts ?? null);
-          setMaxAttempts(status.maxAttempts ?? null);
-          setNextRetryAt(status.nextRetryAt ?? null);
-          break;
-        case 'pending':
-        case 'in_progress':
-        case 'streaming':
-        case 'node_filled':
-          if (Date.now() - startedAt > MAX_POLL_DURATION_MS) {
-            setError('生成时间过长，已停止自动等待。你可以稍后重新进入生成页继续检查结果。');
-            setGenerating(false);
-            return;
-          }
-          if (status.progress !== undefined) setTargetProgress(status.progress);
-          if (status.phase) setPhase(status.phase);
-          if (status.preview) setPreview(status.preview);
-          if (status.nodeCount !== undefined) setNodeCount(status.nodeCount);
-          setAttempts(status.attempts ?? null);
-          setMaxAttempts(status.maxAttempts ?? null);
-          setNextRetryAt(status.nextRetryAt ?? null);
-          setTimeout(() => pollTaskStatus(id, startedAt, 0), POLL_INTERVAL_MS);
-          break;
-        default:
-          break;
-      }
-    } catch (e) {
-      console.error('获取任务状态失败:', e);
-      if (networkFailures + 1 < MAX_NETWORK_FAILURES) {
-        setTimeout(() => pollTaskStatus(id, startedAt, networkFailures + 1), POLL_INTERVAL_MS);
-        return;
-      }
-      setError('无法连接到服务端，获取任务状态失败。请确认服务仍在运行后重试。');
-      setGenerating(false);
-    }
-  }, [navigate, setError, setGenerating, setPhase, setPreview, setTargetProgress, setSkillTree]);
-
   useEffect(() => {
-    const pendingTask = storage.loadPendingTask();
+    const pendingTask = storage.loadPendingTask(currentUserId);
     if (!pendingTask) return;
 
     setTaskId(pendingTask.taskId);
@@ -176,10 +202,11 @@ const GeneratePage: React.FC = () => {
     setAttempts(null);
     setMaxAttempts(null);
     setNextRetryAt(null);
-    setTargetProgress(5);
-    setPhase('正在准备...');
+    // 不设置固定初始进度，等待第一次轮询返回真实进度
+    // 这样可以避免从 5% 跳到真实进度的突兀感
+    setPhase('正在恢复任务状态...');
     pollTaskStatus(pendingTask.taskId, new Date(pendingTask.createdAt).getTime());
-  }, [pollTaskStatus, setGenerating]);
+  }, [pollTaskStatus, setGenerating, currentUserId]);
 
   const handleGenerate = async (input: UserInput) => {
     setGenerating(true);
@@ -200,7 +227,7 @@ const GeneratePage: React.FC = () => {
         taskId: id,
         career: input.career,
         createdAt: new Date().toISOString(),
-      });
+      }, currentUserId);
       // 开始轮询任务状态
       pollTaskStatus(id, Date.now());
     } catch (e) {
@@ -216,7 +243,7 @@ const GeneratePage: React.FC = () => {
       await difyApi.cancelTask(taskId);
     } catch {
     } finally {
-      storage.clearPendingTask();
+      storage.clearPendingTask(currentUserId);
       setGenerating(false);
       setError('已取消生成');
       setCanRetry(false);
@@ -234,7 +261,7 @@ const GeneratePage: React.FC = () => {
       setPhase('正在准备...');
       setPreview('');
       await difyApi.retryTask(taskId);
-      storage.savePendingTask({ taskId, career, createdAt: new Date().toISOString() });
+      storage.savePendingTask({ taskId, career, createdAt: new Date().toISOString() }, currentUserId);
       pollTaskStatus(taskId, Date.now());
     } catch {
       setGenerating(false);
