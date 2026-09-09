@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Moon, Sun, Trash2, Info, Github, User, LogOut, Key, Check, AlertCircle, Loader2, Zap } from 'lucide-react';
+import { X, Moon, Sun, Trash2, Info, ExternalLink, User, LogOut, Key, Check, AlertCircle, Loader2, Zap } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { storage } from '../../services/storage';
 import { llmConfigService, type LlmConfig } from '../../services/llmConfig';
@@ -411,7 +411,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       rel="noreferrer"
                       className="flex items-center gap-2 text-sm text-skill-core hover:underline pt-3 mt-1 border-t border-[rgba(214,176,165,0.2)] font-medium"
                     >
-                      <Github size={14} />
+                      <ExternalLink size={14} />
                       访问 GitHub 项目
                     </a>
                   </div>
