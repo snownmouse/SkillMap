@@ -73,6 +73,22 @@ SkillMap 是一个前后端一体化的 AI 学习规划项目，用来生成技�
 npm install
 ```
 
+#### 国内云服务器部署提示
+
+部分国内云服务器（如腾讯云、阿里云）出网到 `github.com` / npm 官方源不稳定，可能导致 `git clone` 或 `npm install` 超时。可按需切换镜像：
+
+```bash
+# Git 镜像（如 gitclone.com）
+git clone https://gitclone.com/github.com/<user>/<repo>.git
+
+# npm 镜像（如腾讯云内网镜像，仅对腾讯云实例生效）
+npm config set registry https://mirrors.cloud.tencent.com/npm/
+# 或通用国内镜像
+npm config set registry https://registry.npmmirror.com/
+```
+
+仓库根目录已附带 `.npmrc`，默认仅显式开启 `optional=true`（确保 `@tailwindcss/oxide-*` 等平台相关 optional 依赖被安装）；如需切换 registry，可在该文件中取消对应行的注释，或在安装前用 `npm config set registry ...` 临时切换。
+
 ### 2. 配置环境变量
 
 复制 `.env.example` 为 `.env`，至少配置一个可用的 LLM Provider。
@@ -142,8 +158,9 @@ docker compose up --build
 
 ### PostgreSQL
 
-- `NODE_ENV=staging|production` 时强制启用（未配置 PostgreSQL 会直接启动失败）
+- `NODE_ENV=staging|production` 且显式配置了 `DB_HOST` 时启用
 - 其他环境下：设置 `DB_HOST` 为非空且非 `localhost` 时启用
+- 未配置 `DB_HOST` 时回落到 SQLite，方便低配单机部署
 - 适合生产环境和高并发写入场景
 - 需要同时配置 `DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`
 
