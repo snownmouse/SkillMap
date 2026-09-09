@@ -1,3 +1,5 @@
+import { mkdirSync } from 'fs';
+import path from 'path';
 import { config } from './config';
 import { migrateUp } from './migrate';
 
@@ -45,14 +47,13 @@ export async function initDatabase(): Promise<void> {
   
   initPromise = (async () => {
     const nodeEnv = process.env.NODE_ENV || 'development';
-    const mustUsePostgres = nodeEnv === 'production' || nodeEnv === 'staging';
     const hasPostgresConfig = Boolean(process.env.DB_HOST);
-    if (mustUsePostgres && !hasPostgresConfig) {
-      throw new Error('staging/production 环境必须配置 PostgreSQL（DB_HOST/DB_USER/DB_PASSWORD/DB_NAME）');
-    }
+    // 仅在 staging/production 且显式配置了 DB_HOST 时才强制使用 PostgreSQL，
+    // 否则回落 SQLite，方便低配单机部署（见 issue #6）。
+    const mustUsePostgres = (nodeEnv === 'production' || nodeEnv === 'staging') && hasPostgresConfig;
 
     const usePostgres = mustUsePostgres || (process.env.DB_HOST && process.env.DB_HOST !== 'localhost');
-    
+
     if (usePostgres) {
       db = await initPostgres();
       await migrateUp(db, 'postgres');
@@ -88,7 +89,13 @@ export async function closeDb(): Promise<void> {
 async function initSqlite(): Promise<any> {
   const { default: Database } = await import('better-sqlite3');
   const dbPath = process.env.DB_PATH || './data/skillmap.db';
-  
+
+  // 确保 SQLite 文件所在目录存在，避免 low-spec 部署踩坑（见 issue #3）
+  const dbDir = path.dirname(dbPath);
+  if (dbDir && dbDir !== '.') {
+    mkdirSync(dbDir, { recursive: true });
+  }
+
   const db = new Database(dbPath);
   
   db.pragma('journal_mode = WAL');

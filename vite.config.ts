@@ -14,7 +14,8 @@ export default defineConfig(({mode}) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        // 用 '@/' 而非 '@'，避免误匹配 @tailwindcss/vite 等作用域包（见 issue #4）
+        '@/': path.resolve(__dirname, './src') + '/',
       },
     },
     server: {
