@@ -87,8 +87,12 @@ async function main() {
   const planId = 'p_demo';
   const token = 'tok_demo';
   const refreshToken = 'rt_demo';
+  // 使用固定时间戳，避免 SQLite 的 CURRENT_TIMESTAMP 与 PostgreSQL 的 NOW() 因执行时刻不同导致 hash 不一致
+  const fixedCreatedAt = '2026-05-05T00:00:00.000Z';
+  const fixedUpdatedAt = '2026-05-05T00:00:00.000Z';
+  const fixedTargetDate = '2030-01-01T00:00:00.000Z';
 
-  await sqlite.query('INSERT INTO users (id, username, password_hash, display_name) VALUES ($1,$2,$3,$4)', [userId, 'demo', 'hash', 'Demo']);
+  await sqlite.query('INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ($1,$2,$3,$4,$5)', [userId, 'demo', 'hash', 'Demo', fixedCreatedAt]);
   await sqlite.query('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at, refresh_expires_at) VALUES ($1,$2,$3,$4,$5,$6)', [
     sessionId,
     userId,
@@ -111,17 +115,18 @@ async function main() {
     timeline: []
   };
 
-  await sqlite.query('INSERT INTO trees (id, user_id, career, tree_data, partial) VALUES ($1,$2,$3,$4,$5)', [treeId, userId, 'demo', JSON.stringify(treeData), 0]);
-  await sqlite.query('INSERT INTO chat_messages (id, tree_id, node_id, role, content, metadata) VALUES ($1,$2,$3,$4,$5,$6)', [
+  await sqlite.query('INSERT INTO trees (id, user_id, career, tree_data, partial, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)', [treeId, userId, 'demo', JSON.stringify(treeData), 0, fixedCreatedAt, fixedUpdatedAt]);
+  await sqlite.query('INSERT INTO chat_messages (id, tree_id, node_id, role, content, metadata, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)', [
     'm_demo',
     treeId,
     'n1',
     'user',
     'hello',
-    JSON.stringify({ a: 1 })
+    JSON.stringify({ a: 1 }),
+    fixedCreatedAt
   ]);
-  await sqlite.query('INSERT INTO growth_goals (id, user_id, title, description, target_date) VALUES ($1,$2,$3,$4,$5)', [goalId, userId, 'goal', 'desc', '2030-01-01T00:00:00.000Z']);
-  await sqlite.query('INSERT INTO growth_plans (id, goal_id, user_id, active_path, plan_data) VALUES ($1,$2,$3,$4,$5)', [planId, goalId, userId, 'tech', JSON.stringify({ treeId, plan: { ok: true } })]);
+  await sqlite.query('INSERT INTO growth_goals (id, user_id, title, description, target_date, created_at) VALUES ($1,$2,$3,$4,$5,$6)', [goalId, userId, 'goal', 'desc', fixedTargetDate, fixedCreatedAt]);
+  await sqlite.query('INSERT INTO growth_plans (id, goal_id, user_id, active_path, plan_data, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)', [planId, goalId, userId, 'tech', JSON.stringify({ treeId, plan: { ok: true } }), fixedCreatedAt, fixedUpdatedAt]);
 
   const sqliteExport = {
     users: await exportTable(sqlite, 'users'),
@@ -136,7 +141,7 @@ async function main() {
   await migrateDown(pg, 'postgres', 1).catch(() => {});
   await migrateUp(pg, 'postgres');
 
-  await pg.query('INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ($1,$2,$3,$4, NOW())', [userId, 'demo', 'hash', 'Demo']);
+  await pg.query('INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ($1,$2,$3,$4,$5)', [userId, 'demo', 'hash', 'Demo', fixedCreatedAt]);
   await pg.query('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at, refresh_expires_at) VALUES ($1,$2,$3,$4,$5,$6)', [
     sessionId,
     userId,
@@ -145,17 +150,18 @@ async function main() {
     '2030-01-01T00:00:00.000Z',
     '2030-01-02T00:00:00.000Z'
   ]);
-  await pg.query('INSERT INTO trees (id, user_id, career, tree_data, partial, created_at, updated_at) VALUES ($1,$2,$3,$4,$5, NOW(), NOW())', [treeId, userId, 'demo', JSON.stringify(treeData), 0]);
-  await pg.query('INSERT INTO chat_messages (id, tree_id, node_id, role, content, metadata, created_at) VALUES ($1,$2,$3,$4,$5,$6, NOW())', [
+  await pg.query('INSERT INTO trees (id, user_id, career, tree_data, partial, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)', [treeId, userId, 'demo', JSON.stringify(treeData), 0, fixedCreatedAt, fixedUpdatedAt]);
+  await pg.query('INSERT INTO chat_messages (id, tree_id, node_id, role, content, metadata, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)', [
     'm_demo',
     treeId,
     'n1',
     'user',
     'hello',
-    JSON.stringify({ a: 1 })
+    JSON.stringify({ a: 1 }),
+    fixedCreatedAt
   ]);
-  await pg.query('INSERT INTO growth_goals (id, user_id, title, description, target_date, created_at) VALUES ($1,$2,$3,$4,$5, NOW())', [goalId, userId, 'goal', 'desc', '2030-01-01T00:00:00.000Z']);
-  await pg.query('INSERT INTO growth_plans (id, goal_id, user_id, active_path, plan_data, created_at, updated_at) VALUES ($1,$2,$3,$4,$5, NOW(), NOW())', [planId, goalId, userId, 'tech', JSON.stringify({ treeId, plan: { ok: true } })]);
+  await pg.query('INSERT INTO growth_goals (id, user_id, title, description, target_date, created_at) VALUES ($1,$2,$3,$4,$5,$6)', [goalId, userId, 'goal', 'desc', fixedTargetDate, fixedCreatedAt]);
+  await pg.query('INSERT INTO growth_plans (id, goal_id, user_id, active_path, plan_data, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)', [planId, goalId, userId, 'tech', JSON.stringify({ treeId, plan: { ok: true } }), fixedCreatedAt, fixedUpdatedAt]);
 
   const pgExport = {
     users: await exportTable(pg, 'users'),
